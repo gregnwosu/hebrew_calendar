@@ -160,3 +160,19 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+.idea/hebrew_calendar.iml
+.gitignore
+.idea/modules.xml
+.idea/vcs.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/inspectionProfiles/Project_Default.xml
+.idea/sonarlint/issuestore/index.pb
+.idea/sonarlint/issuestore/1/9/19359a61ae2446b51b549167b014da2fcf265768
+.idea/sonarlint/issuestore/1/f/1f615c5daa1386d1584dd2ea52b3753a9b1eaf9f
+.idea/sonarlint/issuestore/8/e/8ec9a00bfd09b3190ac6b22251dbb1aa95a0579d
+.idea/sonarlint/issuestore/a/5/a5cc2925ca8258af241be7e5b0381edf30266302
+.idea/sonarlint/securityhotspotstore/index.pb
+.idea/sonarlint/securityhotspotstore/1/9/19359a61ae2446b51b549167b014da2fcf265768
+.idea/sonarlint/securityhotspotstore/1/f/1f615c5daa1386d1584dd2ea52b3753a9b1eaf9f
+.idea/sonarlint/securityhotspotstore/8/e/8ec9a00bfd09b3190ac6b22251dbb1aa95a0579d
+.idea/sonarlint/securityhotspotstore/a/5/a5cc2925ca8258af241be7e5b0381edf30266302

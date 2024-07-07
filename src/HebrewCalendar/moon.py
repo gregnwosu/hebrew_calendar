@@ -70,7 +70,7 @@ class FeastDays(Enum):
     FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=8,days=[25,26,27,28,29,30,31,32], bible_ref='John 10:22')
     
     @staticmethod
-    def find_feast_days(year_start: dt.datetime) -> Dict[dt.datetime,FeastDay]:
+    def find_feast_days(year_start: dt.datetime) -> Dict[dt.date,FeastDay]:
         result = {add_months_and_days(lunar_year_start=year_start, months=fd.value.lunar_month, days=d):fd.value for fd in FeastDays for d in fd.value.days}
         print(result)
         return result
