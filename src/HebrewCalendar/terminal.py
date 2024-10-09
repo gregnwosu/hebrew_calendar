@@ -32,7 +32,7 @@ def run(tc: TerminalCalendar):
 
 def main(stdscr):
     # 5 march 2023 passover , year start is 19 feb 2023
-    lunar_year_start = dt.date(2023, 2, 19)
+    lunar_year_start = dt.date(2024, 2, 6)
     calendar_app = TerminalCalendar(lunar_year_start, stdscr)
     run(calendar_app)
 
