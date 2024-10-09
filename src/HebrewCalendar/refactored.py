@@ -18,7 +18,13 @@ def ensure_datetime(date_obj):
         return dt.datetime.combine(date_obj, dt.datetime.min.time())
     else:
         raise ValueError("Input must be a date or datetime object.")
-
+@st.cache_data
+def get_nth_new_moon_date(new_moon_dates: List[dt.date], n: int) -> dt.date:
+    """Returns the date of the nth new moon starting from the start date."""
+    if n <= len(new_moon_dates):
+        return new_moon_dates[n - 1]
+    else:
+        raise ValueError("Not enough new moon dates calculated.")
 @st.cache_data
 def get_moon_phase(date_obs): 
     date_obs = ensure_datetime(date_obs)
@@ -51,27 +57,25 @@ def get_moon_phase(date_obs):
     return phase, phase_angle
 
 def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -> dt.datetime:
-    """Returns a datetime that is the given number of new moons (months) 
-    and additional days away from the start date."""
+    """
+    Returns a datetime that is the given number of lunar months (months) 
+    and additional days away from the start date.
+    """
+    # Ensure the start date is a datetime object
     lunar_year_start = ensure_datetime(lunar_year_start)
-    date_cursor = lunar_year_start
-    lunar_months_counted = 0
-    yesterday_phase, _ = get_moon_phase(date_cursor - dt.timedelta(days=1))
-
-    # Count the number of new moons for the given months
-    while lunar_months_counted < months - 1:
-        current_phase, _ = get_moon_phase(date_cursor)
-        
-        if current_phase == 'New Moon' and yesterday_phase != 'New Moon':
-            lunar_months_counted += 1
-            if lunar_months_counted < months - 1:
-                date_cursor += dt.timedelta(days=28)
-        
-        yesterday_phase = current_phase
-        date_cursor += dt.timedelta(days=1)
-
-    # Add the remaining days
-    return date_cursor + dt.timedelta(days=days)
+    # Estimate an end date far enough to include the desired new moons
+    end_date = lunar_year_start + dt.timedelta(days=months * 30 + days)
+    # Generate new moon dates
+    new_moon_dates = enumerate_new_moons(lunar_year_start, end_date)
+    
+    try:
+        # Get the nth new moon date
+        nth_new_moon_date = get_nth_new_moon_date(new_moon_dates, months)
+        # Add the specified number of days
+        target_date = nth_new_moon_date + dt.timedelta(days=days - 1)
+        return dt.datetime.combine(target_date, dt.datetime.min.time())
+    except ValueError:
+        raise ValueError("Not enough new moon dates calculated.")
 
 @st.cache_data
 def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> List[dt.date]:
@@ -82,7 +86,7 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> List[
     result = []
 
     while date_cursor <= end_date:
-        phase, angle = get_moon_phase(date_cursor)
+        phase, _ = get_moon_phase(date_cursor)
         if phase == 'New Moon':
             # Found a new moon
             result.append(date_cursor.date())
@@ -286,3 +290,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+    
