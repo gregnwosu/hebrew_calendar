@@ -237,7 +237,7 @@ def main():
     st.title("Hebrew Year Calendar with Feast Days, Sabbaths, and New Moons")
 
     # Example start date for the Hebrew year
-    start_of_lunar_year = st.date_input("Select Start of Hebrew Year", dt.date(2024, 9, 23))
+    start_of_lunar_year = st.date_input("Select Start of Hebrew Year", dt.date(2024, 3, 9))
     start_of_lunar_year = ensure_datetime(start_of_lunar_year)
 
     # Calculate end date (approximately one lunar year later)
