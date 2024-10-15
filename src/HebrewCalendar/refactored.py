@@ -10,7 +10,13 @@ import streamlit as st
 from zoneinfo import ZoneInfo  # For Python 3.9+
 import numpy as np
 import astropy.units as u
-from typing import Callable
+from typing import Callable, Tuple
+
+class Locations(Enum):
+    
+    JERUSALEM = EarthLocation(lat=31.7683 * u.deg, lon=35.2137 * u.deg)
+    NEW_YORK = EarthLocation(lat=40.7128 * u.deg, lon=-74.0060 * u.deg)
+    LONDON = EarthLocation(lat=51.5074 * u.deg, lon=-0.1278 * u.deg)
 def ensure_datetime(date_obj):
     """Ensure the input is a datetime.datetime object."""
     if isinstance(date_obj, dt.datetime):
@@ -27,25 +33,27 @@ def get_nth_new_moon_date(new_moon_dates: List[dt.date], n: int) -> dt.date:
     else:
         raise ValueError("Not enough new moon dates calculated.")
 @st.cache_data
-def get_moon_phase(date_obs, location=None):
+def get_moon_phase(date_obs, location=Locations.LONDON) -> Tuple[str, float]:
     date_obs = ensure_datetime(date_obs)
     time_obs = Time(date_obs)
-    if location is None:
-        # Default location (e.g., Jerusalem)
-        location = EarthLocation(lat=31.7683 * u.deg, lon=35.2137 * u.deg)
+
     
     # Get the positions of the Sun and Moon
     sun_pos = get_sun(time_obs)
-    moon_pos = get_moon(time_obs, location=location)
+    moon_pos = get_moon(time_obs, location=location.value)
     
     # Calculate the elongation (angular separation) between Sun and Moon
     elongation = sun_pos.separation(moon_pos).degree  # in degrees
     
     # The illuminated fraction can be calculated, but for phase name, we can use elongation directly
     # Determine the Moon phase based on the elongation
-    if elongation < 20 or elongation > 350:
+    if 0 <= elongation < 10:
         phase = 'New Moon'
-    elif 10 <= elongation < 80:
+    # elif 19.9 <= elongation < 20:
+    #     phase = 'New Moon'
+    elif 350 < elongation <= 360:
+        phase = 'New Moon'
+    elif 20.5 <= elongation < 80:
         phase = 'Waxing Crescent'
     elif 80 <= elongation < 100:
         phase = 'First Quarter'
