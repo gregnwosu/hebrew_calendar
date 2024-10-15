@@ -1,5 +1,7 @@
 from enum import Enum
 from typing import Optional, List, Dict
+from astroplan import  moon_phase_angle
+from astroplan import Observer
 from dataclasses import dataclass
 from astropy.time import Time
 from astropy.coordinates import get_moon, get_sun, get_body, EarthLocation
@@ -11,6 +13,7 @@ from zoneinfo import ZoneInfo  # For Python 3.9+
 import numpy as np
 import astropy.units as u
 from typing import Callable, Tuple
+from zoneinfo import ZoneInfo  # For Python 3.9+
 
 class Locations(Enum):
     
@@ -33,42 +36,51 @@ def get_nth_new_moon_date(new_moon_dates: List[dt.date], n: int) -> dt.date:
     else:
         raise ValueError("Not enough new moon dates calculated.")
 @st.cache_data
-def get_moon_phase(date_obs, location=Locations.LONDON) -> Tuple[str, float]:
+def get_moon_phase(date_obs, location=Locations.LONDON, timezone_str='UTC'):
     date_obs = ensure_datetime(date_obs)
-    time_obs = Time(date_obs)
-
+    if location is None:
+        # Default location (e.g., Jerusalem)
+        location = EarthLocation(lat=31.7683 * u.deg, lon=35.2137 * u.deg)
+        timezone_str = 'Asia/Jerusalem'
     
-    # Get the positions of the Sun and Moon
-    sun_pos = get_sun(time_obs)
-    moon_pos = get_moon(time_obs, location=location.value)
+    # Set the time to 6:00 PM local time
+    local_timezone = ZoneInfo(timezone_str)
+    local_time = date_obs.replace(hour=18, minute=0, second=0, tzinfo=local_timezone)
+    # Convert to UTC for astropy
+    time_obs = Time(local_time.astimezone(ZoneInfo('UTC')))
     
-    # Calculate the elongation (angular separation) between Sun and Moon
-    elongation = sun_pos.separation(moon_pos).degree  # in degrees
+    # Calculate the Moon's phase angle
+    phase_angle = moon_phase_angle(time_obs)
+    phase_angle_deg = phase_angle.to(u.deg).value # Convert to degrees
     
-    # The illuminated fraction can be calculated, but for phase name, we can use elongation directly
-    # Determine the Moon phase based on the elongation
-    if 0 <= elongation < 10:
+    # Determine the Moon phase based on the phase angle
+    if 0 <= phase_angle_deg < 11:
+        phase = "New Moon"
+    elif 169 <= phase_angle_deg <= 180: 
+        phase = "New Moon"
+    elif 179 <= phase_angle_deg <= 180:
         phase = 'New Moon'
-    # elif 19.9 <= elongation < 20:
-    #     phase = 'New Moon'
-    elif 350 < elongation <= 360:
-        phase = 'New Moon'
-    elif 20.5 <= elongation < 80:
+    elif 350 < phase_angle_deg <= 360:
+        phase = 'Waning Crescent'
+    elif 11 <= phase_angle_deg < 80:
         phase = 'Waxing Crescent'
-    elif 80 <= elongation < 100:
+    elif 80 <= phase_angle_deg < 100:
         phase = 'First Quarter'
-    elif 100 <= elongation < 170:
+    elif 100 <= phase_angle_deg < 169:
         phase = 'Waxing Gibbous'
-    elif 170 <= elongation <= 190:
+    elif 171 < phase_angle_deg < 176:
         phase = 'Full Moon'
-    elif 190 < elongation <= 260:
+    elif 176 < phase_angle_deg < 179:
         phase = 'Waning Gibbous'
-    elif 260 < elongation <= 280:
+    elif 180 < phase_angle_deg <= 260:
+        phase = 'Waning Gibbous'
+    elif 260 < phase_angle_deg <= 280:
         phase = 'Third Quarter'
     else:
         phase = 'Waning Crescent'
-    
-    return phase, elongation
+    return phase, phase_angle_deg
+
+
 def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -> dt.datetime:
     """
     Returns a datetime that is the given number of lunar months (months) 
@@ -85,7 +97,7 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
         # Get the nth new moon date
         nth_new_moon_date = get_nth_new_moon_date(new_moon_dates, months)
         # Add the specified number of days
-        target_date = nth_new_moon_date + dt.timedelta(days=days - 1)
+        target_date = nth_new_moon_date + dt.timedelta(days=days -1)
         return dt.datetime.combine(target_date, dt.datetime.min.time())
     except ValueError:
         raise ValueError("Not enough new moon dates calculated.")
