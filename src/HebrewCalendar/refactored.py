@@ -2,14 +2,15 @@ from enum import Enum
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 from astropy.time import Time
-from astropy.coordinates import get_moon, get_sun
+from astropy.coordinates import get_moon, get_sun, get_body, EarthLocation
 import datetime as dt
 import pandas as pd
 import calendar
 import streamlit as st
 from zoneinfo import ZoneInfo  # For Python 3.9+
 import numpy as np
-
+import astropy.units as u
+from typing import Callable
 def ensure_datetime(date_obj):
     """Ensure the input is a datetime.datetime object."""
     if isinstance(date_obj, dt.datetime):
@@ -26,43 +27,47 @@ def get_nth_new_moon_date(new_moon_dates: List[dt.date], n: int) -> dt.date:
     else:
         raise ValueError("Not enough new moon dates calculated.")
 @st.cache_data
-def get_moon_phase(date_obs): 
+def get_moon_phase(date_obs, location=None):
     date_obs = ensure_datetime(date_obs)
-    # Convert the date and time to a Time object
     time_obs = Time(date_obs)
-    # Calculate the position of the moon and sun at the observation time
-    moon = get_moon(time_obs)
-    sun = get_sun(time_obs)
-    # Calculate the phase angle between the moon and sun 
-    phase_angle = moon.separation(sun).degree
-
-    # Convert the phase angle to a moon phase
-    if phase_angle <= 10.0:
+    if location is None:
+        # Default location (e.g., Jerusalem)
+        location = EarthLocation(lat=31.7683 * u.deg, lon=35.2137 * u.deg)
+    
+    # Get the positions of the Sun and Moon
+    sun_pos = get_sun(time_obs)
+    moon_pos = get_moon(time_obs, location=location)
+    
+    # Calculate the elongation (angular separation) between Sun and Moon
+    elongation = sun_pos.separation(moon_pos).degree  # in degrees
+    
+    # The illuminated fraction can be calculated, but for phase name, we can use elongation directly
+    # Determine the Moon phase based on the elongation
+    if elongation < 20 or elongation > 350:
         phase = 'New Moon'
-    elif phase_angle < 60.0:
+    elif 10 <= elongation < 80:
         phase = 'Waxing Crescent'
-    elif phase_angle < 110.0:
+    elif 80 <= elongation < 100:
         phase = 'First Quarter'
-    elif phase_angle < 160.0:
+    elif 100 <= elongation < 170:
         phase = 'Waxing Gibbous'
-    elif phase_angle < 210.0:
+    elif 170 <= elongation <= 190:
         phase = 'Full Moon'
-    elif phase_angle < 260.0:
+    elif 190 < elongation <= 260:
         phase = 'Waning Gibbous'
-    elif phase_angle < 310.0:
+    elif 260 < elongation <= 280:
         phase = 'Third Quarter'
     else:
         phase = 'Waning Crescent'
-
-    return phase, phase_angle
-
+    
+    return phase, elongation
 def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -> dt.datetime:
     """
     Returns a datetime that is the given number of lunar months (months) 
     and additional days away from the start date.
     """
     # Ensure the start date is a datetime object
-    lunar_year_start = ensure_datetime(lunar_year_start)
+    lunar_year_start = ensure_datetime(lunar_year_start) 
     # Estimate an end date far enough to include the desired new moons
     end_date = lunar_year_start + dt.timedelta(days=months * 30 + days)
     # Generate new moon dates
@@ -98,25 +103,26 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> List[
     return result
 
 @st.cache_data
-def enumerate_sabbaths(new_moon_dates: List[dt.date], end_date: dt.date) -> List[dt.date]:
-    """Generate Sabbath dates: Every 7 days after a new moon until the next new moon."""
-    sabbaths = []
+def enumerate_sabbaths(new_moon_dates: List[dt.date], end_date: dt.date) -> Dict[dt.date, int]:
+    """Generate Sabbaths with their index after the New Moon."""
+    sabbath_dict = {}
     for i in range(len(new_moon_dates)):
         nm_date = new_moon_dates[i]
         # Start from 7 days after new moon
-        sabbath_date = nm_date + dt.timedelta(days=7)
+        sabbath_date: dt.date = nm_date + dt.timedelta(days=7)
+        sabbath_index = 1  # Index of the Sabbath after the New Moon
         # Determine end date for this cycle
         if i + 1 < len(new_moon_dates):
             next_nm_date = new_moon_dates[i + 1]
-            cycle_end_date = next_nm_date
+            cycle_end_date: dt.date = next_nm_date
         else:
             cycle_end_date = end_date + dt.timedelta(days=1)  # Include end_date
         # Generate Sabbaths until the next new moon
         while sabbath_date < cycle_end_date:
-            sabbaths.append(sabbath_date)
+            sabbath_dict[sabbath_date] = sabbath_index
             sabbath_date += dt.timedelta(days=7)
-    return sabbaths
-
+            sabbath_index += 1
+    return sabbath_dict
 @dataclass
 class Position:
     latitude: float
@@ -128,7 +134,7 @@ class FeastDay:
     lunar_month: int
     days: List[int]
     name: str
-    description: Optional[str]  = None
+    description: Optional[str] = None
     bible_ref: Optional[str] = None
     link: Optional[str] = None
 
@@ -137,7 +143,7 @@ class FeastDays(Enum):
         name='Passover (Pesach)',
         description="Commemorates the Israelites' deliverance from slavery in Egypt.",
         lunar_month=1,
-        days=[14],
+        days=[14 ],
         bible_ref='Leviticus 23:5'
     )
     UNLEAVENED_BREAD = FeastDay(
@@ -150,7 +156,7 @@ class FeastDays(Enum):
     FEAST_OF_WEEKS = FeastDay(
         name='Feast of Weeks (Shavuot)',
         description='Celebrated fifty days after the Firstfruits. Also known as Pentecost.',
-        lunar_month=1,
+        lunar_month= 1,
         days=[50],
         bible_ref='Leviticus 23:15-21'
     )
@@ -158,7 +164,7 @@ class FeastDays(Enum):
         name='Feast of Trumpets (Rosh Hashanah)',
         description="New Year's festival marked by the blowing of trumpets.",
         lunar_month=7,
-        days=[1],
+        days= [1],
         bible_ref='Leviticus 23:23-25'
     )
     DAY_OF_ATONEMENT = FeastDay(
@@ -207,6 +213,7 @@ def create_calendar(year, month, feast_dates, sabbath_dates, new_moon_dates, cli
     days_of_week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     st.write(f"### {calendar.month_name[month]} {year}")
     # Display the days of the week
+
     cols = st.columns(7)
     for i, day_name in enumerate(days_of_week):
         cols[i].write(f"**{day_name}**")
@@ -224,7 +231,15 @@ def create_calendar(year, month, feast_dates, sabbath_dates, new_moon_dates, cli
                 if current_date in feast_dates:
                     emojis += " 🎉"
                 if current_date in sabbath_dates:
-                    emojis += " ✨"
+                    sabbath_index = sabbath_dates[current_date]
+                    if sabbath_index == 1:
+                        emojis += " 🌗"  # First Quarter Moon (Half Moon)
+                    elif sabbath_index == 2:
+                        emojis += " 🌕"  # Full Moon
+                    elif sabbath_index == 3:
+                        emojis += " 🌓"  # Last Quarter Moon (Half Moon)
+                    else:
+                        emojis += " 🌒"  # Default emoji for other Sabbaths
                 if current_date in new_moon_dates:
                     emojis += " 🌑"
                 cell_text += emojis
@@ -232,6 +247,7 @@ def create_calendar(year, month, feast_dates, sabbath_dates, new_moon_dates, cli
                 button_key = f"{current_date}-{i}"
                 if cols[i].button(cell_text, key=button_key):
                     st.session_state[clicked_date_key] = current_date
+
 
 def main():
     st.title("Hebrew Year Calendar with Feast Days, Sabbaths, and New Moons")
