@@ -1,6 +1,10 @@
 import pytest
 import datetime as dt
-from HebrewCalendar.moon import get_moon_phase, calculate_sunset, Location, enumerate_sabbaths, enumerate_new_moons, add_months_and_days
+from HebrewCalendar.moon import (
+    get_moon_phase,
+    enumerate_sabbaths,
+    enumerate_new_moons,
+)
 
 # @pytest.mark.skip(reason="not implemented")
 @pytest.mark.parametrize("date_obs, expected_moon_phase",[
@@ -29,15 +33,14 @@ def test_new_moon(date_obs, expected_moon_phase):
     # assert actual_moon_phase != expected_moon_phase , f"Expected not equal to {expected_moon_phase} but got {actual_moon_phase} for {date_obs - dt.timedelta(days=1)} angle is {phase_angle} "
 
 def test_enumerate_new_moons():
-    start_date =dt.datetime(2023, 5, 15, 21, 21,0)
-    end_date = dt.datetime(2023, 8, 15, 21, 21,0)
+    start_date = dt.datetime(2023, 5, 15, 21, 21, 0)
+    end_date = dt.datetime(2023, 8, 15, 21, 21, 0)
     new_moons = enumerate_new_moons(start_date, end_date)
-    print(f"new moons are {new_moons}")
     assert len(new_moons) == 4, f"Expected 4 new moons but got {len(new_moons)}"
     
-def test_enumerate_sabbats():
-    start_date =dt.datetime(2023, 5, 15, 21, 21,0)
-    end_date =  dt.datetime(2023, 6, 17, 21, 21)
-    sabbaths = enumerate_sabbaths(start_date, end_date)
-    print(f"sabbaths are {sabbaths}")
-    assert len(sabbaths) == 12, f"Expected 12 sabbaths but got {len(sabbaths)}"
+def test_enumerate_sabbaths():
+    start_date = dt.datetime(2023, 5, 15, 21, 21, 0)
+    end_date = dt.datetime(2023, 8, 15, 21, 21, 0)
+    new_moons = list(enumerate_new_moons(start_date, end_date).keys())
+    sabbaths = enumerate_sabbaths(new_moons)
+    assert len(sabbaths) == 16, f"Expected 16 sabbaths but got {len(sabbaths)}"
