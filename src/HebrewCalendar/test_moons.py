@@ -4,6 +4,7 @@ from HebrewCalendar.moon import get_moon_phase, calculate_sunset, Location, enum
 
 # @pytest.mark.skip(reason="not implemented")
 @pytest.mark.parametrize("date_obs, expected_moon_phase",[
+                        (dt.datetime(2025, 2, 24, 21, 0,0), 'New Moon'), #Yom Kippur
                         (dt.datetime(2023, 8, 15, 21, 0,0), 'New Moon'),
                         (dt.datetime(2023, 7, 17, 21, 0,0), 'New Moon'),
                         (dt.datetime(2023, 5, 18, 21, 0,0), 'New Moon'),

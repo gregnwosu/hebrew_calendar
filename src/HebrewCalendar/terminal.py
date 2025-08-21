@@ -1,5 +1,5 @@
 import curses
-from terminalcalendar import TerminalCalendar
+from .terminalcalendar import TerminalCalendar
 import datetime as dt
 
 key_callbacks = {
@@ -30,10 +30,10 @@ def run(tc: TerminalCalendar):
             for fn in key_callbacks[ch]:
                 fn()
 
-def main(stdscr):
-    # 5 march 2023 passover , year start is 19 feb 2023
-<<<<<<< HEAD
-    lunar_year_start = dt.date(2024, 2, 6)
+    lunar_year_start = dt.date(2024, 2, 19)
+>>>>>>> ca2b5eb8ed2fa45a68e137704f9442d6cfe8ee03
+    calendar_app = TerminalCalendar(lunar_year_start, stdscr)
+    run(calendar_app)
 =======
     lunar_year_start = dt.date(2024, 2, 19)
 >>>>>>> ca2b5eb8ed2fa45a68e137704f9442d6cfe8ee03

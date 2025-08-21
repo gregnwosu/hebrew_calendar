@@ -3,25 +3,32 @@ import curses
 import datetime as dt
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
-from moon import FeastDays, enumerate_sabbaths, enumerate_new_moons
+from .moon import FeastDays, enumerate_sabbaths, enumerate_new_moons
 
 
 @dataclass
 class TerminalCalendar:
     start_of_lunar_year: dt.date
-    stdscr: Any = curses.initscr()
+    stdscr: Any = None
     current_date: dt.date = dt.datetime.today()
     feast_dates: Dict[dt.datetime, FeastDays] = field(init=False)
     sabbath_dates: List[dt.datetime] = field(init=False)
     new_moon_dates: List[dt.datetime] = field(init=False)
     
     def __post_init__(self):
-        self.feast_dates = FeastDays.find_feast_days(self.start_of_lunar_year)
-        self.new_moon_dates = enumerate_new_moons(self.start_of_lunar_year, self.start_of_lunar_year + dt.timedelta(days=365))
+        if self.stdscr is None:
+            self.stdscr = curses.initscr()
+
+        # Work internally with full datetimes
+        start_dt = dt.datetime.combine(self.start_of_lunar_year, dt.time.min)
+
+        self.feast_dates = FeastDays.find_feast_days(start_dt)
+        self.new_moon_dates = enumerate_new_moons(start_dt, start_dt + dt.timedelta(days=365))
         self.sabbath_dates = enumerate_sabbaths(list(self.new_moon_dates.keys()))
+
         curses.curs_set(0)  # Hide the cursor
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)  
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
         curses.init_pair(3, curses.COLOR_BLUE,  curses.COLOR_BLACK)
         curses.init_pair(4, curses.COLOR_CYAN, curses.COLOR_BLACK)
