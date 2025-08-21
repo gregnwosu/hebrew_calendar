@@ -5,18 +5,17 @@ from enum import Enum
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 from functools import reduce
-from astropy.time.core import Time
-from astropy.coordinates import get_moon, get_sun
+from astropy.time import Time
+from astropy.coordinates import get_body
 import datetime as dt
 
 def get_moon_phase(date_obs): 
-    # Convert the date and time to a Julian date
+    # Convert the date and time to an astropy Time object
     time_obs = Time(date_obs.strftime('%Y-%m-%d %H:%M:%S'))
-    jd_obs = time_obs.jd
 
     # Calculate the position of the moon and sun at the observation time
-    moon = get_moon(time_obs)
-    sun = get_sun(time_obs)
+    moon = get_body("moon", time_obs)
+    sun = get_body("sun", time_obs)
     # Calculate the phase angle between the moon and sun 
     phase_angle =  moon.separation(sun).degree
     
