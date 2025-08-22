@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Union
 from dataclasses import dataclass
 from functools import reduce
 from astropy.time import Time
+
 from astroplan import moon_phase_angle
 from astropy.coordinates import SkyCoord, EarthLocation
 import astropy.units as u
@@ -66,6 +67,20 @@ def get_moon_phase(date_obs):
     time_obs = Time(date_obs.strftime('%Y-%m-%d %H:%M:%S'))
     # Calculate the moon phase angle using astroplan
     phase_angle = moon_phase_angle(time_obs).to(u.deg).value
+
+from astropy.coordinates import get_body
+import datetime as dt
+
+def get_moon_phase(date_obs): 
+    # Convert the date and time to an astropy Time object
+    time_obs = Time(date_obs.strftime('%Y-%m-%d %H:%M:%S'))
+
+    # Calculate the position of the moon and sun at the observation time
+    moon = get_body("moon", time_obs)
+    sun = get_body("sun", time_obs)
+    # Calculate the phase angle between the moon and sun 
+    phase_angle =  moon.separation(sun).degree
+
     
     # Convert the phase angle to a moon phase
     if phase_angle <= 10.0:
@@ -117,13 +132,9 @@ class FeastDays(Enum):
     FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=8,days=[25,26,27,28,29,30,31,32], bible_ref='John 10:22')
     
     @staticmethod
-    def find_feast_days(year_start: dt.datetime, year_end: dt.datetime) -> Dict[dt.date, FeastDay]:
-        result = {}
-        for fd in FeastDays:
-            for day in fd.value.days:
-                feast_date = add_months_and_days(year_start, fd.value.lunar_month, day)
-                if feast_date.date() <= year_end.date():
-                    result[feast_date.date()] = fd.value
+    def find_feast_days(year_start: dt.datetime) -> Dict[dt.date,FeastDay]:
+        result = {add_months_and_days(lunar_year_start=year_start, months=fd.value.lunar_month, days=d):fd.value for fd in FeastDays for d in fd.value.days}
+        print(result)
         return result
 
 

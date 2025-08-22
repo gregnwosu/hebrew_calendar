@@ -217,24 +217,30 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> List[
     return result
 
 @st.cache_data
-def enumerate_sabbaths(new_moon_dates: List[dt.date], end_date: dt.date) -> Dict[dt.date, int]:
-    """Generate Sabbaths with their index after the New Moon."""
-    sabbath_dict = {}
-    for i in range(len(new_moon_dates)):
-        nm_date = new_moon_dates[i]
-        # Start from 7 days after new moon
-        sabbath_date: dt.date = nm_date + dt.timedelta(days=7)
-        sabbath_index = 1  # Index of the Sabbath after the New Moon
-        # Determine end date for this cycle
+def enumerate_sabbaths(new_moon_dates: List[dt.date], end_date: dt.date) -> List[dt.date]:
+    """Generate Sabbath dates including the new moons themselves.
+
+    The new moon opens the month and is treated as a Sabbath.  Additional
+    Sabbaths occur every seven days thereafter until (but not including)
+    the next new moon.  If the next month begins the day after the final
+    weekly Sabbath (i.e. a 29‑day month), this naturally results in a
+    two‑day Sabbath spanning the month boundary.
+    """
+    sabbaths: List[dt.date] = []
+    for i, nm_date in enumerate(new_moon_dates):
+        sabbath_date = nm_date  # The new moon itself is a Sabbath
+
         if i + 1 < len(new_moon_dates):
             next_nm_date = new_moon_dates[i + 1]
             cycle_end_date: dt.date = next_nm_date
         else:
-            cycle_end_date = end_date + dt.timedelta(days=1)  # Include end_date
-        # Generate Sabbaths until the next new moon
+            # Include Sabbaths up to the provided end_date for the final month
+            cycle_end_date = end_date + dt.timedelta(days=1)
+
         while sabbath_date < cycle_end_date:
             sabbath_dict[sabbath_date] = sabbath_index
             sabbath_date += dt.timedelta(days=7)
+
             sabbath_index += 1
     return sabbath_dict
 @dataclass
