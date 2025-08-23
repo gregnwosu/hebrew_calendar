@@ -44,4 +44,7 @@ def test_enumerate_sabbaths():
     end_date = dt.datetime(2023, 8, 15, 21, 21, 0)
     new_moons = list(enumerate_new_moons(start_date, end_date).keys())
     sabbaths = enumerate_sabbaths(new_moons)
-    assert len(sabbaths) == 16, f"Expected 16 sabbaths but got {len(sabbaths)}"
+    # Each lunar month begins with a New Moon Sabbath followed by Sabbaths on the
+    # 8th, 15th, 22nd and 29th days.  With four new moons in the range we expect
+    # twenty Sabbath days in total.
+    assert len(sabbaths) == 20, f"Expected 20 sabbaths but got {len(sabbaths)}"
