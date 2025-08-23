@@ -1,6 +1,1 @@
-astropy
-astroplan
 pytest
-pvlib
-#curses
-streamlit
