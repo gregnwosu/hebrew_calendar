@@ -1,5 +1,6 @@
 astropy
 pytest
 pvlib
-#curses
-streamlit
+dash
+dash-bootstrap-components
+gunicorn
