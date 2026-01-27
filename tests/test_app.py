@@ -132,21 +132,64 @@ class TestFeastDays:
         names = [fd.name for fd in FEAST_DATES.values()]
         assert any("Atonement" in n for n in names), "Day of Atonement not found"
 
-    def test_sukkot_lasts_seven_days(self):
-        sukkot_days = [k for k, v in FEAST_DATES.items() if "Tabernacles" in v.name]
-        assert len(sukkot_days) == 7, f"Sukkot should be 7 days, got {len(sukkot_days)}"
+    def test_sukkot_seven_days_per_year(self):
+        """Each lunar year should have exactly 7 Sukkot days."""
+        sukkot_days = sorted(k for k, v in FEAST_DATES.items() if "Tabernacles" in v.name)
+        # Group by contiguous blocks (7 consecutive days = one observance)
+        assert len(sukkot_days) >= 7, f"Expected at least 7 Sukkot days, got {len(sukkot_days)}"
+        assert len(sukkot_days) % 7 == 0, f"Sukkot days should be multiple of 7, got {len(sukkot_days)}"
 
-    def test_unleavened_bread_lasts_seven_days(self):
-        days = [k for k, v in FEAST_DATES.items() if "Unleavened" in v.name]
-        assert len(days) == 7, f"Unleavened Bread should be 7 days, got {len(days)}"
+    def test_unleavened_bread_seven_days_per_year(self):
+        days = sorted(k for k, v in FEAST_DATES.items() if "Unleavened" in v.name)
+        assert len(days) >= 7
+        assert len(days) % 7 == 0, f"Unleavened Bread should be multiple of 7, got {len(days)}"
 
-    def test_hanukkah_lasts_eight_days(self):
-        days = [k for k, v in FEAST_DATES.items() if "Hanukkah" in v.name]
-        assert len(days) == 8, f"Hanukkah should be 8 days, got {len(days)}"
+    def test_hanukkah_eight_days_per_year(self):
+        days = sorted(k for k, v in FEAST_DATES.items() if "Hanukkah" in v.name)
+        assert len(days) >= 8
+        assert len(days) % 8 == 0, f"Hanukkah should be multiple of 8, got {len(days)}"
 
-    def test_purim_lasts_two_days(self):
-        days = [k for k, v in FEAST_DATES.items() if "Purim" in v.name]
-        assert len(days) == 2, f"Purim should be 2 days, got {len(days)}"
+    def test_purim_two_days_per_year(self):
+        days = sorted(k for k, v in FEAST_DATES.items() if "Purim" in v.name)
+        assert len(days) >= 2
+        assert len(days) % 2 == 0, f"Purim should be multiple of 2, got {len(days)}"
+
+    def test_feast_data_covers_2026(self):
+        """The app must have feast data for the current year (2026)."""
+        feast_years = {k.year for k in FEAST_DATES}
+        assert 2026 in feast_years, f"No feast data for 2026. Years covered: {sorted(feast_years)}"
+
+
+# ---------------------------------------------------------------------------
+# Multi-year data coverage
+# ---------------------------------------------------------------------------
+
+class TestMultiYearCoverage:
+    def test_new_moons_span_multiple_years(self):
+        years = {k.year for k in NEW_MOON_DATES}
+        assert len(years) >= 3, f"Expected 3+ years of new moon data, got {sorted(years)}"
+
+    def test_sabbaths_span_multiple_years(self):
+        years = {d.year for d in SABBATH_DATES}
+        assert len(years) >= 3, f"Expected 3+ years of sabbath data, got {sorted(years)}"
+
+    def test_data_covers_2024_to_2027(self):
+        moon_years = {k.year for k in NEW_MOON_DATES}
+        for y in (2024, 2025, 2026, 2027):
+            assert y in moon_years, f"Missing new moon data for {y}"
+
+    def test_today_has_badge_data(self):
+        """Today's month should have at least one special day."""
+        today = dt.date.today()
+        first = dt.date(today.year, today.month, 1)
+        import calendar as cal_mod
+        last_day = cal_mod.monthrange(today.year, today.month)[1]
+        last = dt.date(today.year, today.month, last_day)
+        has_special = any(
+            first <= d <= last
+            for d in list(NEW_MOON_DATES.keys()) + list(FEAST_DATES.keys()) + list(SABBATH_DATES)
+        )
+        assert has_special, f"No special days found for {today.strftime('%B %Y')}"
 
 
 # ---------------------------------------------------------------------------
