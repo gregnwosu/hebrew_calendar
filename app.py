@@ -1,6 +1,6 @@
 import calendar
 import datetime as dt
-from dash import Dash, html, dcc, callback, Output, Input
+from dash import Dash, html, dcc, callback, Output, Input, State
 import dash_bootstrap_components as dbc
 from moon import FeastDays, enumerate_sabbaths, enumerate_new_moons, get_moon_phase
 
@@ -29,7 +29,6 @@ def create_calendar_grid(year, month, selected_day):
     cal = calendar.monthcalendar(year, month)
     weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
-    # Header row
     header = html.Tr([html.Th(d, style={"textAlign": "center", "padding": "10px"}) for d in weekdays])
 
     rows = [header]
@@ -50,7 +49,7 @@ def create_calendar_grid(year, month, selected_day):
                 })
                 if day == selected_day:
                     style["border"] = "2px solid #ffc107"
-                cells.append(html.Td(str(day), style=style, id={"type": "day-cell", "day": day}))
+                cells.append(html.Td(str(day), style=style))
         rows.append(html.Tr(cells))
 
     return html.Table(rows, style={"width": "100%", "borderCollapse": "collapse"})
@@ -75,6 +74,12 @@ def get_day_info(day_date):
         info.append(html.P(f"Moon phase: {phase} ({angle:.1f})"))
     return info
 
+# Build initial calendar
+today = dt.date.today()
+initial_grid = create_calendar_grid(today.year, today.month, today.day)
+initial_month = today.strftime("%B %Y")
+initial_info = get_day_info(today)
+
 # Layout
 app.layout = dbc.Container([
     html.H1("Hebrew Calendar", className="text-center my-4"),
@@ -86,17 +91,17 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardHeader([
                     dbc.Button("<", id="prev-month", color="secondary", size="sm", className="me-2"),
-                    html.Span(id="month-year", className="mx-3"),
+                    html.Span(initial_month, id="month-year", className="mx-3"),
                     dbc.Button(">", id="next-month", color="secondary", size="sm", className="ms-2"),
                 ], className="d-flex justify-content-center align-items-center"),
-                dbc.CardBody(id="calendar-grid")
+                dbc.CardBody(initial_grid, id="calendar-grid")
             ])
         ], md=7),
 
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Selected Day"),
-                dbc.CardBody(id="day-info")
+                dbc.CardBody(initial_info, id="day-info")
             ]),
             html.Div(className="mt-3"),
             dbc.Card([
@@ -120,7 +125,7 @@ app.layout = dbc.Container([
     ]),
 
     # Store for current date
-    dcc.Store(id="current-date", data={"year": dt.date.today().year, "month": dt.date.today().month, "day": dt.date.today().day})
+    dcc.Store(id="current-date", data={"year": today.year, "month": today.month, "day": today.day})
 ], fluid=True, className="py-4")
 
 @callback(
@@ -129,8 +134,9 @@ app.layout = dbc.Container([
      Output("day-info", "children"),
      Output("current-date", "data")],
     [Input("prev-month", "n_clicks"),
-     Input("next-month", "n_clicks"),
-     Input("current-date", "data")]
+     Input("next-month", "n_clicks")],
+    [State("current-date", "data")],
+    prevent_initial_call=True
 )
 def update_calendar(prev_clicks, next_clicks, date_data):
     from dash import ctx
@@ -145,18 +151,13 @@ def update_calendar(prev_clicks, next_clicks, date_data):
         if month < 1:
             month = 12
             year -= 1
-        day = 1
     elif triggered == "next-month":
         month += 1
         if month > 12:
             month = 1
             year += 1
-        day = 1
 
-    # Ensure day is valid for the month
-    max_day = calendar.monthrange(year, month)[1]
-    day = min(day, max_day)
-
+    day = 1
     cal_grid = create_calendar_grid(year, month, day)
     month_name = dt.date(year, month, 1).strftime("%B %Y")
     day_info = get_day_info(dt.date(year, month, day))
