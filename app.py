@@ -17,45 +17,23 @@ def _normalise_date(d):
     return d.date() if isinstance(d, dt.datetime) else d
 
 
-# Only the notable phases get emojis on the calendar
-NOTABLE_MOON_EMOJI = {
-    "New Moon":      "\U0001F311",   # 🌑
-    "First Quarter": "\U0001F313",   # 🌓
-    "Full Moon":     "\U0001F315",   # 🌕
-    "Third Quarter": "\U0001F317",   # 🌗
+MOON_EMOJI = {
+    "New Moon":        "\U0001F311",   # 🌑
+    "Waxing Crescent": "\U0001F312",   # 🌒
+    "First Quarter":   "\U0001F313",   # 🌓
+    "Waxing Gibbous":  "\U0001F314",   # 🌔
+    "Full Moon":       "\U0001F315",   # 🌕
+    "Waning Gibbous":  "\U0001F316",   # 🌖
+    "Third Quarter":   "\U0001F317",   # 🌗
+    "Waning Crescent": "\U0001F318",   # 🌘
 }
 
-FEAST_EMOJI = "\U0001F389"          # 🎉
+FEAST_EMOJI = "\U0001F389"   # 🎉
 SABBATH_EMOJI = "\U0001F54A\uFE0F"  # 🕊️
 
 
-def _find_notable_phases(new_moon_dates_raw):
-    """Pre-compute dates for full moons and quarter moons by searching near known new moons."""
-    notable = {}
-
-    for nm in sorted(new_moon_dates_raw.keys()):
-        # New moon itself
-        notable[_normalise_date(nm)] = "New Moon"
-
-        # Search windows relative to new moon for other phases
-        searches = [
-            ("First Quarter", range(6, 9)),
-            ("Full Moon", range(13, 17)),
-            ("Third Quarter", range(20, 24)),
-        ]
-        for target_phase, day_range in searches:
-            for offset in day_range:
-                check = nm + dt.timedelta(days=offset)
-                phase, _ = get_moon_phase(check)
-                if phase == target_phase:
-                    notable[_normalise_date(check)] = target_phase
-                    break
-
-    return notable
-
-
 def _build_data():
-    """Compute new moons, sabbaths, feast days and notable phases for multiple lunar years."""
+    """Compute new moons, sabbaths and feast days for multiple lunar years."""
     raw_moons = enumerate_new_moons(dt.datetime(2024, 1, 1), dt.datetime(2028, 1, 1))
     new_moon_dates = {_normalise_date(k): v for k, v in raw_moons.items()}
 
@@ -74,23 +52,25 @@ def _build_data():
         for k, v in raw.items():
             feast_dates[_normalise_date(k)] = v
 
-    notable_phases = _find_notable_phases(raw_moons)
-
-    return new_moon_dates, sabbath_dates, feast_dates, notable_phases
+    return new_moon_dates, sabbath_dates, feast_dates
 
 
-NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES, NOTABLE_PHASES = _build_data()
+NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES = _build_data()
 
 
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
 
+def get_moon_emoji(day_date):
+    """Return moon phase emoji for a given date."""
+    phase, _ = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
+    return MOON_EMOJI.get(phase, "")
+
+
 def get_day_badges(day_date):
-    """Return list of emoji strings for a calendar day."""
+    """Return list of emoji badges for a calendar day."""
     badges = []
-    if day_date in NOTABLE_PHASES:
-        badges.append(NOTABLE_MOON_EMOJI[NOTABLE_PHASES[day_date]])
     if day_date in FEAST_DATES:
         badges.append(FEAST_EMOJI)
     if day_date in SABBATH_DATES:
@@ -116,6 +96,7 @@ def create_calendar_grid(year, month, selected_day):
                 cells.append(html.Td("", style={"padding": "4px", "minWidth": "50px", "minHeight": "55px"}))
             else:
                 day_date = dt.date(year, month, day)
+                moon_em = get_moon_emoji(day_date)
                 badges = get_day_badges(day_date)
                 badge_str = " ".join(badges)
 
@@ -134,14 +115,12 @@ def create_calendar_grid(year, month, selected_day):
                     style["backgroundColor"] = "rgba(255, 193, 7, 0.15)"
 
                 cell_children = [
-                    html.Div(str(day), style={
-                        "fontSize": "0.95rem",
-                        "fontWeight": "bold" if day == selected_day else "normal",
-                    }),
+                    html.Div(str(day), style={"fontSize": "0.95rem", "fontWeight": "bold" if day == selected_day else "normal"}),
+                    html.Div(moon_em, style={"fontSize": "1.1rem", "lineHeight": "1"}),
                 ]
                 if badge_str:
                     cell_children.append(
-                        html.Div(badge_str, style={"fontSize": "1rem", "lineHeight": "1.2"})
+                        html.Div(badge_str, style={"fontSize": "0.75rem", "lineHeight": "1"})
                     )
 
                 cells.append(html.Td(
@@ -158,23 +137,20 @@ def create_calendar_grid(year, month, selected_day):
 def get_day_info(day_date):
     """Get information about a specific day."""
     phase, angle = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
-    moon_em = NOTABLE_MOON_EMOJI.get(phase, "")
+    moon_em = MOON_EMOJI.get(phase, "")
 
     info = [html.H6(day_date.strftime("%A, %d %B %Y"), className="mb-3")]
-    info.append(html.P(
-        f"{moon_em} {phase} (angle: {angle:.1f}\u00b0)".strip(),
-        style={"fontSize": "1.1rem"},
-    ))
+    info.append(html.P(f"{moon_em} {phase} (angle: {angle:.1f}°)", style={"fontSize": "1.1rem"}))
 
     if day_date in NEW_MOON_DATES:
         info.append(html.P(
-            "\U0001F311 New Moon \u2014 start of lunar month",
-            style={"color": "#17a2b8", "fontWeight": "bold"},
+            f"\U0001F311 New Moon — start of lunar month",
+            style={"color": "#17a2b8", "fontWeight": "bold"}
         ))
     if day_date in SABBATH_DATES:
         info.append(html.P(
-            f"{SABBATH_EMOJI} Sabbath \u2014 day of rest",
-            style={"color": "#6ea8fe"},
+            f"{SABBATH_EMOJI} Sabbath — day of rest",
+            style={"color": "#6ea8fe"}
         ))
     if day_date in FEAST_DATES:
         feast = FEAST_DATES[day_date]
@@ -224,13 +200,31 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardHeader("Legend"),
                 dbc.CardBody([
-                    html.Div(["\U0001F311 New Moon"], className="mb-2"),
-                    html.Div(["\U0001F313 First Quarter"], className="mb-2"),
-                    html.Div(["\U0001F315 Full Moon"], className="mb-2"),
-                    html.Div(["\U0001F317 Third Quarter"], className="mb-2"),
+                    html.Div([
+                        html.Span("\U0001F311", style={"marginRight": "8px"}),
+                        "New Moon"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span("\U0001F313", style={"marginRight": "8px"}),
+                        "First Quarter"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span("\U0001F315", style={"marginRight": "8px"}),
+                        "Full Moon"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span("\U0001F317", style={"marginRight": "8px"}),
+                        "Third Quarter"
+                    ], className="mb-2"),
                     html.Hr(),
-                    html.Div([f"{FEAST_EMOJI} Feast Day"], className="mb-2"),
-                    html.Div([f"{SABBATH_EMOJI} Sabbath"]),
+                    html.Div([
+                        html.Span(FEAST_EMOJI, style={"marginRight": "8px"}),
+                        "Feast Day"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span(SABBATH_EMOJI, style={"marginRight": "8px"}),
+                        "Sabbath"
+                    ]),
                 ])
             ])
         ], lg=4)
