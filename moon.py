@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass
 from functools import reduce
 from astropy.time import Time
-from astropy.coordinates import get_body
+from astropy.coordinates import get_body, get_sun
 import datetime as dt
 
 def get_moon_phase(date_obs):
@@ -125,6 +125,35 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
 def _at_noon(d: dt.datetime) -> dt.datetime:
     """Return the same date at noon UTC, matching the time used for emoji display."""
     return d.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
+def get_vernal_equinox(year: int) -> dt.date:
+    """Return the date of the vernal equinox for a given year.
+
+    Finds the first day (at noon UTC) when the sun's declination is >= 0,
+    searching from March 18 onward.
+    """
+    for day in range(18, 25):
+        d = dt.datetime(year, 3, day, 12, 0, 0)
+        t = Time(d.strftime('%Y-%m-%d %H:%M:%S'))
+        sun = get_sun(t)
+        if sun.dec.degree >= 0:
+            return d.date()
+    return dt.date(year, 3, 20)  # fallback
+
+
+def get_lunar_year_starts(new_moons: Dict[dt.datetime, float],
+                          start_year: int, end_year: int) -> Dict[int, dt.datetime]:
+    """For each year, find Nisan 1: the first new moon on or after the vernal equinox."""
+    year_starts = {}
+    sorted_moons = sorted(new_moons.keys())
+    for y in range(start_year, end_year + 1):
+        equinox = get_vernal_equinox(y)
+        for m in sorted_moons:
+            if m.date() >= equinox:
+                year_starts[y] = m
+                break
+    return year_starts
 
 
 def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[dt.datetime,float]:

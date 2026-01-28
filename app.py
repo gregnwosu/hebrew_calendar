@@ -2,7 +2,7 @@ import calendar
 import datetime as dt
 from dash import Dash, html, dcc, callback, Output, Input, State, ALL, ctx, clientside_callback
 import dash_bootstrap_components as dbc
-from moon import FeastDays, enumerate_sabbaths, enumerate_new_moons, get_moon_phase
+from moon import FeastDays, enumerate_sabbaths, enumerate_new_moons, get_moon_phase, get_lunar_year_starts
 
 # Initialize the app with Bootstrap styling
 app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
@@ -40,11 +40,7 @@ def _build_data():
     sabbath_list = enumerate_sabbaths(list(raw_moons.keys()))
     sabbath_dates = {_normalise_date(d) for d in sabbath_list}
 
-    year_starts = {}
-    for m in sorted(raw_moons.keys()):
-        y = m.year
-        if y not in year_starts and m.month in (1, 2):
-            year_starts[y] = m
+    year_starts = get_lunar_year_starts(raw_moons, 2024, 2027)
 
     feast_dates = {}
     for y, start in year_starts.items():
