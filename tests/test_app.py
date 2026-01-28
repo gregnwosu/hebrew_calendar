@@ -3,7 +3,8 @@ import pytest
 from app import (
     app, server,
     FEAST_DATES, NEW_MOON_DATES, SABBATH_DATES,
-    get_day_style, create_calendar_grid, get_day_info,
+    MOON_EMOJI, FEAST_EMOJI, SABBATH_EMOJI,
+    get_moon_emoji, get_day_badges, create_calendar_grid, get_day_info,
 )
 from moon import FeastDays, FeastDay, get_moon_phase, enumerate_new_moons, enumerate_sabbaths, add_months_and_days
 
@@ -212,69 +213,96 @@ class TestCalendarGrid:
         found = False
         for row in grid.children[1:]:  # Skip header
             for cell in row.children:
-                if cell.children == "15":
+                if isinstance(cell.children, list) and cell.children[0].children == "15":
                     assert "border" in cell.style
                     assert "#ffc107" in cell.style["border"]
                     found = True
         assert found, "Day 15 cell not found"
 
     def test_all_month_days_present(self):
-        import calendar as cal_mod
         grid = create_calendar_grid(2024, 2, 1)  # Feb 2024 = 29 days (leap year)
-        day_texts = []
+        day_nums = []
         for row in grid.children[1:]:
             for cell in row.children:
-                if cell.children and cell.children != "":
-                    day_texts.append(int(cell.children))
-        assert max(day_texts) == 29
-        assert min(day_texts) == 1
-        assert len(day_texts) == 29
+                if isinstance(cell.children, list) and len(cell.children) >= 1:
+                    day_nums.append(int(cell.children[0].children))
+        assert max(day_nums) == 29
+        assert min(day_nums) == 1
+        assert len(day_nums) == 29
 
     def test_day_cells_have_click_id(self):
         grid = create_calendar_grid(2024, 3, 1)
         for row in grid.children[1:]:
             for cell in row.children:
-                if cell.children and cell.children != "":
+                if isinstance(cell.children, list) and len(cell.children) >= 1:
                     assert cell.id is not None
                     assert cell.id["type"] == "day-cell"
-                    assert cell.id["day"] == int(cell.children)
+                    assert cell.id["day"] == int(cell.children[0].children)
+
+    def test_day_cells_contain_moon_emoji(self):
+        grid = create_calendar_grid(2024, 3, 1)
+        moon_emojis = set(MOON_EMOJI.values())
+        found_emoji = False
+        for row in grid.children[1:]:
+            for cell in row.children:
+                if isinstance(cell.children, list) and len(cell.children) >= 2:
+                    em = cell.children[1].children  # Second div is moon emoji
+                    if em in moon_emojis:
+                        found_emoji = True
+        assert found_emoji, "No moon emojis found in calendar grid"
+
+    def test_feast_day_cell_has_celebration_emoji(self):
+        # Find a month with a feast day and render it
+        feast_date = list(FEAST_DATES.keys())[0]
+        grid = create_calendar_grid(feast_date.year, feast_date.month, feast_date.day)
+        found = False
+        for row in grid.children[1:]:
+            for cell in row.children:
+                if isinstance(cell.children, list) and len(cell.children) >= 3:
+                    badge_div = cell.children[2].children
+                    if FEAST_EMOJI in str(badge_div):
+                        found = True
+        assert found, f"No feast emoji found for month containing {feast_date}"
 
 
 # ---------------------------------------------------------------------------
-# Day styling
+# Emoji badges
 # ---------------------------------------------------------------------------
 
-class TestDayStyle:
-    def test_new_moon_gets_teal(self):
+class TestEmojiBadges:
+    def test_moon_emoji_returns_string(self):
+        em = get_moon_emoji(dt.date(2024, 3, 15))
+        assert isinstance(em, str)
+        assert len(em) >= 1
+
+    def test_new_moon_emoji_is_black_moon(self):
         nm_date = list(NEW_MOON_DATES.keys())[0]
-        style = get_day_style(nm_date)
-        assert style["backgroundColor"] == "#17a2b8"
+        em = get_moon_emoji(nm_date)
+        assert em == MOON_EMOJI["New Moon"]
 
-    def test_feast_gets_green(self):
-        # Find a feast date that is NOT also a new moon
-        for fd in FEAST_DATES:
-            if fd not in NEW_MOON_DATES:
-                style = get_day_style(fd)
-                assert style["backgroundColor"] == "#198754"
-                return
-        pytest.skip("All feast dates are also new moons")
+    def test_all_moon_emojis_mapped(self):
+        valid_phases = {"New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
+                        "Full Moon", "Waning Gibbous", "Third Quarter", "Waning Crescent"}
+        assert set(MOON_EMOJI.keys()) == valid_phases
 
-    def test_sabbath_gets_blue(self):
-        # Find a sabbath that is not a new moon or feast
+    def test_feast_badge(self):
+        feast_date = list(FEAST_DATES.keys())[0]
+        badges = get_day_badges(feast_date)
+        assert FEAST_EMOJI in badges
+
+    def test_sabbath_badge(self):
+        # Find a sabbath that is not also a feast
         for s in SABBATH_DATES:
-            if s not in NEW_MOON_DATES and s not in FEAST_DATES:
-                style = get_day_style(s)
-                assert style["backgroundColor"] == "#0d6efd"
-                return
-        pytest.skip("All sabbaths overlap with moons or feasts")
+            badges = get_day_badges(s)
+            assert SABBATH_EMOJI in badges
+            return
 
-    def test_regular_day_no_background(self):
-        # Find a day with no special status
+    def test_regular_day_no_badges(self):
         for day_offset in range(1, 365):
             d = dt.date(2024, 1, 1) + dt.timedelta(days=day_offset)
-            if d not in NEW_MOON_DATES and d not in FEAST_DATES and d not in SABBATH_DATES:
-                style = get_day_style(d)
-                assert style == {}
+            if d not in FEAST_DATES and d not in SABBATH_DATES:
+                badges = get_day_badges(d)
+                assert badges == []
                 return
 
 
@@ -293,29 +321,31 @@ class TestDayInfo:
         info = get_day_info(dt.date(2024, 3, 15))
         assert isinstance(info[0], html.H6)
 
-    def test_new_moon_date_shows_phase_angle(self):
+    def test_new_moon_date_shows_info(self):
         nm_date = list(NEW_MOON_DATES.keys())[0]
         info = get_day_info(nm_date)
         text = str(info)
         assert "New Moon" in text
-        assert "phase angle" in text
 
-    def test_feast_date_shows_name_and_ref(self):
+    def test_feast_date_shows_name(self):
         feast_date = list(FEAST_DATES.keys())[0]
         feast = FEAST_DATES[feast_date]
         info = get_day_info(feast_date)
         text = str(info)
         assert feast.name in text
 
-    def test_regular_day_shows_moon_phase(self):
-        # Find a non-special day
-        for day_offset in range(1, 365):
-            d = dt.date(2024, 1, 1) + dt.timedelta(days=day_offset)
-            if d not in NEW_MOON_DATES and d not in FEAST_DATES and d not in SABBATH_DATES:
-                info = get_day_info(d)
-                text = str(info)
-                assert "Moon phase" in text
-                return
+    def test_info_always_shows_moon_phase(self):
+        info = get_day_info(dt.date(2024, 6, 15))
+        text = str(info)
+        # Should always have a moon emoji and phase name
+        moon_emojis = set(MOON_EMOJI.values())
+        assert any(em in text for em in moon_emojis), "No moon emoji in day info"
+
+    def test_sabbath_info(self):
+        sab_date = sorted(SABBATH_DATES)[0]
+        info = get_day_info(sab_date)
+        text = str(info)
+        assert "Sabbath" in text
 
 
 # ---------------------------------------------------------------------------

@@ -17,24 +17,35 @@ def _normalise_date(d):
     return d.date() if isinstance(d, dt.datetime) else d
 
 
+MOON_EMOJI = {
+    "New Moon":        "\U0001F311",   # 🌑
+    "Waxing Crescent": "\U0001F312",   # 🌒
+    "First Quarter":   "\U0001F313",   # 🌓
+    "Waxing Gibbous":  "\U0001F314",   # 🌔
+    "Full Moon":       "\U0001F315",   # 🌕
+    "Waning Gibbous":  "\U0001F316",   # 🌖
+    "Third Quarter":   "\U0001F317",   # 🌗
+    "Waning Crescent": "\U0001F318",   # 🌘
+}
+
+FEAST_EMOJI = "\U0001F389"   # 🎉
+SABBATH_EMOJI = "\U0001F54A\uFE0F"  # 🕊️
+
+
 def _build_data():
     """Compute new moons, sabbaths and feast days for multiple lunar years."""
-    # New moons across the full range
     raw_moons = enumerate_new_moons(dt.datetime(2024, 1, 1), dt.datetime(2028, 1, 1))
     new_moon_dates = {_normalise_date(k): v for k, v in raw_moons.items()}
 
-    # Sabbaths from all new moons
     sabbath_list = enumerate_sabbaths(list(raw_moons.keys()))
     sabbath_dates = {_normalise_date(d) for d in sabbath_list}
 
-    # Find lunar year starts (first new moon in Jan/Feb each year)
     year_starts = {}
     for m in sorted(raw_moons.keys()):
         y = m.year
         if y not in year_starts and m.month in (1, 2):
             year_starts[y] = m
 
-    # Compute feast days for each lunar year
     feast_dates = {}
     for y, start in year_starts.items():
         raw = FeastDays.find_feast_days(start)
@@ -51,15 +62,20 @@ NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES = _build_data()
 # Helper functions
 # ---------------------------------------------------------------------------
 
-def get_day_style(day_date):
-    """Return CSS style based on the type of day."""
-    if day_date in NEW_MOON_DATES:
-        return {"backgroundColor": "#17a2b8", "color": "white", "borderRadius": "50%"}
+def get_moon_emoji(day_date):
+    """Return moon phase emoji for a given date."""
+    phase, _ = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
+    return MOON_EMOJI.get(phase, "")
+
+
+def get_day_badges(day_date):
+    """Return list of emoji badges for a calendar day."""
+    badges = []
     if day_date in FEAST_DATES:
-        return {"backgroundColor": "#198754", "color": "white", "borderRadius": "4px"}
+        badges.append(FEAST_EMOJI)
     if day_date in SABBATH_DATES:
-        return {"backgroundColor": "#0d6efd", "color": "white", "borderRadius": "4px"}
-    return {}
+        badges.append(SABBATH_EMOJI)
+    return badges
 
 
 def create_calendar_grid(year, month, selected_day):
@@ -68,7 +84,7 @@ def create_calendar_grid(year, month, selected_day):
     weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
     header = html.Tr([
-        html.Th(d, style={"textAlign": "center", "padding": "10px", "fontWeight": "bold"})
+        html.Th(d, style={"textAlign": "center", "padding": "8px 4px", "fontWeight": "bold", "fontSize": "0.85rem"})
         for d in weekdays
     ])
 
@@ -77,23 +93,38 @@ def create_calendar_grid(year, month, selected_day):
         cells = []
         for day in week:
             if day == 0:
-                cells.append(html.Td("", style={"padding": "10px"}))
+                cells.append(html.Td("", style={"padding": "4px", "minWidth": "50px", "minHeight": "55px"}))
             else:
                 day_date = dt.date(year, month, day)
-                style = get_day_style(day_date)
-                style.update({
+                moon_em = get_moon_emoji(day_date)
+                badges = get_day_badges(day_date)
+                badge_str = " ".join(badges)
+
+                style = {
                     "textAlign": "center",
-                    "padding": "10px",
+                    "padding": "4px 2px",
                     "cursor": "pointer",
-                    "width": "40px",
-                    "height": "40px",
+                    "minWidth": "50px",
+                    "minHeight": "55px",
+                    "verticalAlign": "top",
                     "userSelect": "none",
-                })
+                    "borderRadius": "6px",
+                }
                 if day == selected_day:
                     style["border"] = "2px solid #ffc107"
-                    style["fontWeight"] = "bold"
+                    style["backgroundColor"] = "rgba(255, 193, 7, 0.15)"
+
+                cell_children = [
+                    html.Div(str(day), style={"fontSize": "0.95rem", "fontWeight": "bold" if day == selected_day else "normal"}),
+                    html.Div(moon_em, style={"fontSize": "1.1rem", "lineHeight": "1"}),
+                ]
+                if badge_str:
+                    cell_children.append(
+                        html.Div(badge_str, style={"fontSize": "0.75rem", "lineHeight": "1"})
+                    )
+
                 cells.append(html.Td(
-                    str(day),
+                    cell_children,
                     style=style,
                     id={"type": "day-cell", "day": day},
                     n_clicks=0,
@@ -105,31 +136,30 @@ def create_calendar_grid(year, month, selected_day):
 
 def get_day_info(day_date):
     """Get information about a specific day."""
+    phase, angle = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
+    moon_em = MOON_EMOJI.get(phase, "")
+
     info = [html.H6(day_date.strftime("%A, %d %B %Y"), className="mb-3")]
+    info.append(html.P(f"{moon_em} {phase} (angle: {angle:.1f}°)", style={"fontSize": "1.1rem"}))
+
     if day_date in NEW_MOON_DATES:
-        angle = NEW_MOON_DATES[day_date]
-        info.append(html.P([
-            html.Span("", style={"backgroundColor": "#17a2b8", "padding": "3px 10px",
-                                  "borderRadius": "50%", "marginRight": "8px", "display": "inline-block"}),
-            f"New Moon (phase angle: {angle:.1f})"
-        ], style={"color": "#17a2b8"}))
+        info.append(html.P(
+            f"\U0001F311 New Moon — start of lunar month",
+            style={"color": "#17a2b8", "fontWeight": "bold"}
+        ))
     if day_date in SABBATH_DATES:
-        info.append(html.P([
-            html.Span("", style={"backgroundColor": "#0d6efd", "padding": "3px 10px",
-                                  "borderRadius": "4px", "marginRight": "8px", "display": "inline-block"}),
-            "Sabbath"
-        ], style={"color": "#0d6efd"}))
+        info.append(html.P(
+            f"{SABBATH_EMOJI} Sabbath — day of rest",
+            style={"color": "#6ea8fe"}
+        ))
     if day_date in FEAST_DATES:
         feast = FEAST_DATES[day_date]
-        children = [html.H5(feast.name, style={"color": "#198754"})]
+        children = [html.H5(f"{FEAST_EMOJI} {feast.name}", style={"color": "#75b798"})]
         if feast.description:
             children.append(html.P(feast.description))
         if feast.bible_ref:
             children.append(html.Small(f"Reference: {feast.bible_ref}", className="text-muted"))
         info.append(html.Div(children))
-    if len(info) == 1:
-        phase, angle = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
-        info.append(html.P(f"Moon phase: {phase} ({angle:.1f})"))
     return info
 
 
@@ -143,7 +173,7 @@ initial_month = today.strftime("%B %Y")
 initial_info = get_day_info(today)
 
 app.layout = dbc.Container([
-    html.H1("Hebrew Calendar", className="text-center my-4"),
+    html.H1("\U0001F319 Hebrew Calendar", className="text-center my-4"),
     html.P("Biblical feast days, sabbaths, and new moons based on lunar calculations",
            className="text-center text-muted mb-4"),
     html.P("Click a day or use arrow keys (\u2190 \u2192 \u2191 \u2193) to navigate",
@@ -159,7 +189,7 @@ app.layout = dbc.Container([
                 ], className="d-flex justify-content-center align-items-center"),
                 dbc.CardBody(initial_grid, id="calendar-grid")
             ])
-        ], md=7),
+        ], lg=8),
 
         dbc.Col([
             dbc.Card([
@@ -171,29 +201,37 @@ app.layout = dbc.Container([
                 dbc.CardHeader("Legend"),
                 dbc.CardBody([
                     html.Div([
-                        html.Span("", style={"backgroundColor": "#17a2b8", "padding": "5px 15px",
-                                              "borderRadius": "50%", "marginRight": "10px", "display": "inline-block"}),
-                        html.Span("New Moon")
+                        html.Span("\U0001F311", style={"marginRight": "8px"}),
+                        "New Moon"
                     ], className="mb-2"),
                     html.Div([
-                        html.Span("", style={"backgroundColor": "#0d6efd", "padding": "5px 15px",
-                                              "borderRadius": "4px", "marginRight": "10px", "display": "inline-block"}),
-                        html.Span("Sabbath")
+                        html.Span("\U0001F313", style={"marginRight": "8px"}),
+                        "First Quarter"
                     ], className="mb-2"),
                     html.Div([
-                        html.Span("", style={"backgroundColor": "#198754", "padding": "5px 15px",
-                                              "borderRadius": "4px", "marginRight": "10px", "display": "inline-block"}),
-                        html.Span("Feast Day")
-                    ])
+                        html.Span("\U0001F315", style={"marginRight": "8px"}),
+                        "Full Moon"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span("\U0001F317", style={"marginRight": "8px"}),
+                        "Third Quarter"
+                    ], className="mb-2"),
+                    html.Hr(),
+                    html.Div([
+                        html.Span(FEAST_EMOJI, style={"marginRight": "8px"}),
+                        "Feast Day"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span(SABBATH_EMOJI, style={"marginRight": "8px"}),
+                        "Sabbath"
+                    ]),
                 ])
             ])
-        ], md=5)
+        ], lg=4)
     ]),
 
     # Stores
     dcc.Store(id="current-date", data={"year": today.year, "month": today.month, "day": today.day}),
-
-    # Hidden input to receive keyboard events from JS
     dcc.Store(id="key-press", data=0),
     dcc.Store(id="key-direction", data=""),
 ], fluid=True, className="py-4")
@@ -206,7 +244,6 @@ app.layout = dbc.Container([
 app.clientside_callback(
     """
     function(n) {
-        // Only attach once
         if (!window._hcKeyBound) {
             window._hcKeyBound = true;
             document.addEventListener('keydown', function(e) {
@@ -217,10 +254,6 @@ app.clientside_callback(
                 else if (e.key === 'ArrowUp') dir = 'up';
                 if (dir) {
                     e.preventDefault();
-                    // Update the hidden stores via Dash
-                    var el = document.getElementById('key-direction');
-                    var btn = document.getElementById('key-press');
-                    // We use setProps on the dcc.Store components
                     window.dash_clientside.set_props('key-direction', {data: dir});
                     window.dash_clientside.set_props('key-press', {data: Date.now()});
                 }
