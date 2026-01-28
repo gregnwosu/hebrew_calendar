@@ -104,11 +104,11 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
 
     date_cursor = lunar_year_start
     lunar_months_counted = 0
-    yesterday_phase, _ = get_moon_phase(date_cursor - dt.timedelta(days=1))
+    yesterday_phase, _ = get_moon_phase(_at_noon(date_cursor - dt.timedelta(days=1)))
 
     # Count the number of new moons for the given months
     while lunar_months_counted < months-1:
-        current_phase, _ = get_moon_phase(date_cursor)
+        current_phase, _ = get_moon_phase(_at_noon(date_cursor))
 
         if current_phase == 'New Moon' and yesterday_phase != 'New Moon':
             lunar_months_counted += 1
@@ -122,6 +122,11 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
     return date_cursor + dt.timedelta(days=days)
 
 
+def _at_noon(d: dt.datetime) -> dt.datetime:
+    """Return the same date at noon UTC, matching the time used for emoji display."""
+    return d.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
 def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[dt.datetime,float]:
     """Count the number of new moons from start_date to end_date."""
     date_cursor = start_date
@@ -129,12 +134,25 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[
     result = dict()
 
     while date_cursor <= end_date:
-        phase, angle = get_moon_phase(date_cursor)
+        # Check phase at noon to be consistent with emoji display
+        phase, angle = get_moon_phase(_at_noon(date_cursor))
         if phase == 'New Moon':
+            # Walk backwards to find the FIRST day of this new moon
+            first_day = date_cursor
+            first_angle = angle
+            while first_day > start_date:
+                prev_day = first_day - dt.timedelta(days=1)
+                prev_phase, prev_angle = get_moon_phase(_at_noon(prev_day))
+                if prev_phase == 'New Moon':
+                    first_day = prev_day
+                    first_angle = prev_angle
+                else:
+                    break
+
             new_moon_count += 1
+            result[first_day] = first_angle
             # Move forward by approximately one lunar cycle to find the next new moon
-            result[date_cursor]= angle
-            date_cursor += dt.timedelta(days=29)
+            date_cursor = first_day + dt.timedelta(days=29)
         else:
             # Increment day by day to check the next date
             date_cursor += dt.timedelta(days=1)
