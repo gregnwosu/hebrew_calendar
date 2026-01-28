@@ -2,9 +2,9 @@ import datetime as dt
 import pytest
 from app import (
     app, server,
-    FEAST_DATES, NEW_MOON_DATES, SABBATH_DATES,
-    MOON_EMOJI, FEAST_EMOJI, SABBATH_EMOJI,
-    get_moon_emoji, get_day_badges, create_calendar_grid, get_day_info,
+    FEAST_DATES, NEW_MOON_DATES, SABBATH_DATES, NOTABLE_PHASES,
+    NOTABLE_MOON_EMOJI, FEAST_EMOJI, SABBATH_EMOJI,
+    get_day_badges, create_calendar_grid, get_day_info,
 )
 from moon import FeastDays, FeastDay, get_moon_phase, enumerate_new_moons, enumerate_sabbaths, add_months_and_days
 
@@ -239,17 +239,17 @@ class TestCalendarGrid:
                     assert cell.id["type"] == "day-cell"
                     assert cell.id["day"] == int(cell.children[0].children)
 
-    def test_day_cells_contain_moon_emoji(self):
+    def test_day_cells_contain_notable_moon_emoji(self):
         grid = create_calendar_grid(2024, 3, 1)
-        moon_emojis = set(MOON_EMOJI.values())
+        moon_emojis = set(NOTABLE_MOON_EMOJI.values())
         found_emoji = False
         for row in grid.children[1:]:
             for cell in row.children:
                 if isinstance(cell.children, list) and len(cell.children) >= 2:
-                    em = cell.children[1].children  # Second div is moon emoji
-                    if em in moon_emojis:
+                    badge_text = cell.children[1].children  # Badge div
+                    if any(em in str(badge_text) for em in moon_emojis):
                         found_emoji = True
-        assert found_emoji, "No moon emojis found in calendar grid"
+        assert found_emoji, "No notable moon emojis found in calendar grid"
 
     def test_feast_day_cell_has_celebration_emoji(self):
         # Find a month with a feast day and render it
@@ -258,9 +258,9 @@ class TestCalendarGrid:
         found = False
         for row in grid.children[1:]:
             for cell in row.children:
-                if isinstance(cell.children, list) and len(cell.children) >= 3:
-                    badge_div = cell.children[2].children
-                    if FEAST_EMOJI in str(badge_div):
+                if isinstance(cell.children, list) and len(cell.children) >= 2:
+                    badge_text = str(cell.children[1].children)
+                    if FEAST_EMOJI in badge_text:
                         found = True
         assert found, f"No feast emoji found for month containing {feast_date}"
 
@@ -270,20 +270,28 @@ class TestCalendarGrid:
 # ---------------------------------------------------------------------------
 
 class TestEmojiBadges:
-    def test_moon_emoji_returns_string(self):
-        em = get_moon_emoji(dt.date(2024, 3, 15))
-        assert isinstance(em, str)
-        assert len(em) >= 1
+    def test_notable_phases_only_four(self):
+        """Only New Moon, First Quarter, Full Moon, Third Quarter should have emojis."""
+        assert set(NOTABLE_MOON_EMOJI.keys()) == {
+            "New Moon", "First Quarter", "Full Moon", "Third Quarter"
+        }
 
-    def test_new_moon_emoji_is_black_moon(self):
+    def test_notable_phases_not_empty(self):
+        assert len(NOTABLE_PHASES) > 0
+
+    def test_notable_phases_values_are_valid(self):
+        valid = {"New Moon", "First Quarter", "Full Moon", "Third Quarter"}
+        for v in NOTABLE_PHASES.values():
+            assert v in valid, f"Unexpected phase in NOTABLE_PHASES: {v}"
+
+    def test_notable_phases_keys_are_date(self):
+        for k in NOTABLE_PHASES:
+            assert type(k) is dt.date, f"Expected dt.date but got {type(k)} for {k}"
+
+    def test_new_moon_badge_has_moon_emoji(self):
         nm_date = list(NEW_MOON_DATES.keys())[0]
-        em = get_moon_emoji(nm_date)
-        assert em == MOON_EMOJI["New Moon"]
-
-    def test_all_moon_emojis_mapped(self):
-        valid_phases = {"New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
-                        "Full Moon", "Waning Gibbous", "Third Quarter", "Waning Crescent"}
-        assert set(MOON_EMOJI.keys()) == valid_phases
+        badges = get_day_badges(nm_date)
+        assert NOTABLE_MOON_EMOJI["New Moon"] in badges
 
     def test_feast_badge(self):
         feast_date = list(FEAST_DATES.keys())[0]
@@ -291,7 +299,6 @@ class TestEmojiBadges:
         assert FEAST_EMOJI in badges
 
     def test_sabbath_badge(self):
-        # Find a sabbath that is not also a feast
         for s in SABBATH_DATES:
             badges = get_day_badges(s)
             assert SABBATH_EMOJI in badges
@@ -300,7 +307,7 @@ class TestEmojiBadges:
     def test_regular_day_no_badges(self):
         for day_offset in range(1, 365):
             d = dt.date(2024, 1, 1) + dt.timedelta(days=day_offset)
-            if d not in FEAST_DATES and d not in SABBATH_DATES:
+            if d not in FEAST_DATES and d not in SABBATH_DATES and d not in NOTABLE_PHASES:
                 badges = get_day_badges(d)
                 assert badges == []
                 return
@@ -337,9 +344,10 @@ class TestDayInfo:
     def test_info_always_shows_moon_phase(self):
         info = get_day_info(dt.date(2024, 6, 15))
         text = str(info)
-        # Should always have a moon emoji and phase name
-        moon_emojis = set(MOON_EMOJI.values())
-        assert any(em in text for em in moon_emojis), "No moon emoji in day info"
+        # Day info panel always shows current phase name (from get_moon_phase)
+        valid_phases = {"New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
+                        "Full Moon", "Waning Gibbous", "Third Quarter", "Waning Crescent"}
+        assert any(p in text for p in valid_phases), "No moon phase name in day info"
 
     def test_sabbath_info(self):
         sab_date = sorted(SABBATH_DATES)[0]
