@@ -171,7 +171,13 @@ initial_info = get_day_info(today)
 app.layout = dbc.Container([
     html.H1("\U0001F319 Hebrew Calendar", className="text-center my-4"),
     html.P("Biblical feast days, sabbaths, and new moons based on lunar calculations",
-           className="text-center text-muted mb-4"),
+           className="text-center text-muted mb-2"),
+    dbc.Alert(
+        "\U0001F319 Feasts and Sabbaths begin at sunset on the date shown (evening to evening)",
+        color="info",
+        className="text-center mb-3",
+        style={"fontSize": "0.9rem"}
+    ),
     html.P("Click a day or use arrow keys (\u2190 \u2192 \u2191 \u2193) to navigate",
            className="text-center text-muted mb-2", style={"fontSize": "0.85rem"}),
 
