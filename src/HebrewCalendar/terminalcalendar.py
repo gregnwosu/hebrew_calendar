@@ -16,9 +16,10 @@ class TerminalCalendar:
     new_moon_dates: List[dt.datetime] = field(init=False)
     
     def __post_init__(self):
-        self.feast_dates = FeastDays.find_feast_days(self.start_of_lunar_year)
         self.new_moon_dates = enumerate_new_moons(self.start_of_lunar_year, self.start_of_lunar_year + dt.timedelta(days=365))
-        self.sabbath_dates = enumerate_sabbaths(list(self.new_moon_dates.keys()))
+        new_moon_list = list(self.new_moon_dates.keys())
+        self.feast_dates = FeastDays.find_feast_days(self.start_of_lunar_year, new_moon_list)
+        self.sabbath_dates = enumerate_sabbaths(new_moon_list)
         curses.curs_set(0)  # Hide the cursor
         curses.start_color()
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)  

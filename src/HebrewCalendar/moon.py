@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass
 from functools import reduce
 from astropy.time import Time
-from astropy.coordinates import get_body
+from astropy.coordinates import get_body, get_sun
 import datetime as dt
 
 def get_moon_phase(date_obs):
@@ -20,7 +20,8 @@ def get_moon_phase(date_obs):
     phase_angle =  moon.separation(sun).degree
 
     # Convert the phase angle to a moon phase
-    if phase_angle <= 10.0:
+    # Using 12 degrees threshold to better match traditional calendar observations
+    if phase_angle <= 12.0:
         phase = 'New Moon'
     elif phase_angle < 60.0:
         phase = 'Waxing Crescent'
@@ -64,13 +65,57 @@ class FeastDays(Enum):
     FEAST_OF_WEEKS = FeastDay(name='Feast of Weeks (Shavuot)', description='Celebrated fifty days after the Firstfruits. Also known as Pentecost.', lunar_month=1,days=[50], bible_ref='Leviticus 23:15-21')
     FEAST_OF_TRUMPETS = FeastDay(name='Feast of Trumpets (Rosh Hashanah)', description="New Year's festival marked by the blowing of trumpets.", lunar_month=7, days=[1], bible_ref='Leviticus 23:23-25')
     DAY_OF_ATONEMENT = FeastDay(name='Day of Atonement (Yom Kippur)', description='A day of fasting and repentance.', lunar_month=7,days=[10], bible_ref='Leviticus 23:26-32')
-    FEAST_OF_TABERNACLES =FeastDay(name='Feast of Tabernacles (Sukkot)', description="A seven-day festival commemorating the Israelites' forty years of wandering in the desert.", lunar_month=7, days=[15,16,17,18,19,20,21], bible_ref='Leviticus 23:33-36, 39-43')
+    FEAST_OF_TABERNACLES =FeastDay(name='Feast of Tabernacles (Sukkot)', description="A seven-day festival plus the 8th day assembly (Shemini Atzeret).", lunar_month=7, days=[15,16,17,18,19,20,21,22], bible_ref='Leviticus 23:33-36, 39-43')
     PURIM = FeastDay(name='Purim', description="Commemorates the deliverance of the Jewish people from Haman's plot.", lunar_month=12,days=[14,15], bible_ref='Esther 9:20-32')
-    FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=8,days=[25,26,27,28,29,30,31,32], bible_ref='John 10:22')
+    FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=9,days=[25,26,27,28,29,30,31,32], bible_ref='John 10:22')
 
     @staticmethod
-    def find_feast_days(year_start: dt.datetime) -> Dict[dt.date,FeastDay]:
+    def find_feast_days(year_start: dt.datetime, new_moons: List[dt.datetime] = None) -> Dict[dt.date, FeastDay]:
+        """Calculate feast days for a lunar year.
+
+        Args:
+            year_start: The date of Nisan 1 (first month new moon)
+            new_moons: Optional precomputed list of new moon dates. If not provided,
+                       falls back to calculating moons on-the-fly (less accurate).
+        """
+        if new_moons is not None:
+            return FeastDays._find_feast_days_from_moons(year_start, new_moons)
+        # Fallback to old method
         result = {add_months_and_days(lunar_year_start=year_start, months=fd.value.lunar_month, days=d):fd.value for fd in FeastDays for d in fd.value.days}
+        return result
+
+    @staticmethod
+    def _find_feast_days_from_moons(nisan_new_moon: dt.datetime, new_moons: List[dt.datetime]) -> Dict[dt.date, FeastDay]:
+        """Calculate feast days using precomputed new moon dates."""
+        sorted_moons = sorted(new_moons)
+
+        # Find the index of Nisan in the sorted moon list
+        nisan_idx = None
+        for i, m in enumerate(sorted_moons):
+            if m.date() == nisan_new_moon.date():
+                nisan_idx = i
+                break
+
+        if nisan_idx is None:
+            # Fallback: find closest moon
+            for i, m in enumerate(sorted_moons):
+                if abs((m - nisan_new_moon).days) <= 1:
+                    nisan_idx = i
+                    break
+
+        if nisan_idx is None:
+            return {}
+
+        result = {}
+        for fd in FeastDays:
+            # Month index: Nisan is month 1, so month N is at nisan_idx + (N-1)
+            month_idx = nisan_idx + fd.value.lunar_month - 1
+            if month_idx < len(sorted_moons):
+                month_start = sorted_moons[month_idx]
+                for day in fd.value.days:
+                    # Day 1 is the new moon itself, day 14 is 13 days after, etc.
+                    feast_date = month_start + dt.timedelta(days=day - 1)
+                    result[feast_date] = fd.value
         return result
 
 
@@ -104,11 +149,11 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
 
     date_cursor = lunar_year_start
     lunar_months_counted = 0
-    yesterday_phase, _ = get_moon_phase(date_cursor - dt.timedelta(days=1))
+    yesterday_phase, _ = get_moon_phase(_at_noon(date_cursor - dt.timedelta(days=1)))
 
     # Count the number of new moons for the given months
     while lunar_months_counted < months-1:
-        current_phase, _ = get_moon_phase(date_cursor)
+        current_phase, _ = get_moon_phase(_at_noon(date_cursor))
 
         if current_phase == 'New Moon' and yesterday_phase != 'New Moon':
             lunar_months_counted += 1
@@ -122,6 +167,93 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int) -
     return date_cursor + dt.timedelta(days=days)
 
 
+def _at_noon(d: dt.datetime) -> dt.datetime:
+    """Return the same date at noon UTC, matching the time used for emoji display."""
+    return d.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
+def get_vernal_equinox(year: int) -> dt.date:
+    """Return the date of the vernal equinox for a given year.
+
+    Finds the first day (at noon UTC) when the sun's declination is >= 0,
+    searching from March 18 onward.
+    """
+    for day in range(18, 25):
+        d = dt.datetime(year, 3, day, 12, 0, 0)
+        t = Time(d.strftime('%Y-%m-%d %H:%M:%S'))
+        sun = get_sun(t)
+        if sun.dec.degree >= 0:
+            return d.date()
+    return dt.date(year, 3, 20)  # fallback
+
+
+def get_autumn_equinox(year: int) -> dt.date:
+    """Return the date of the autumn equinox for a given year.
+
+    Finds the first day (at noon UTC) when the sun's declination goes below 0,
+    searching from September 20 onward.
+    """
+    for day in range(20, 27):
+        d = dt.datetime(year, 9, day, 12, 0, 0)
+        t = Time(d.strftime('%Y-%m-%d %H:%M:%S'))
+        sun = get_sun(t)
+        if sun.dec.degree <= 0:
+            return d.date()
+    return dt.date(year, 9, 22)  # fallback
+
+
+def get_lunar_year_starts(new_moons: Dict[dt.datetime, float],
+                          start_year: int, end_year: int) -> Dict[int, dt.datetime]:
+    """For each year, find Nisan 1 by first finding Tishri (7th month).
+
+    Tishri 1 is the last new moon on or before the autumn equinox.
+    Nisan 1 is then 6 lunar months before Tishri 1.
+
+    INTERCALATION RULE (Biblical):
+    If Passover (Nisan 14) would fall BEFORE the vernal equinox,
+    a 13th month is added to the previous year, pushing Nisan to the
+    next new moon. This ensures Passover always falls in spring after
+    the equinox, as per Exodus 12:2 (Aviv/spring month).
+    """
+    year_starts = {}
+    sorted_moons = sorted(new_moons.keys())
+
+    for y in range(start_year, end_year + 1):
+        autumn_eq = get_autumn_equinox(y)
+
+        # Find Tishri: last new moon on or before autumn equinox
+        tishri = None
+        for m in sorted_moons:
+            if m.date() <= autumn_eq:
+                tishri = m
+            else:
+                break
+
+        if tishri is None:
+            continue
+
+        # Find candidate Nisan: 6 new moons before Tishri
+        tishri_idx = sorted_moons.index(tishri)
+        if tishri_idx >= 6:
+            candidate_nisan = sorted_moons[tishri_idx - 6]
+
+            # Check if Passover (Nisan 14) falls after vernal equinox
+            passover_date = candidate_nisan + dt.timedelta(days=13)  # Day 14 = +13 days from day 1
+            vernal_eq = get_vernal_equinox(passover_date.year)
+
+            if passover_date.date() >= vernal_eq:
+                # Passover is after equinox - use this Nisan
+                year_starts[y] = candidate_nisan
+            else:
+                # Passover would be before equinox - add 13th month (use next new moon)
+                # This means the previous year had 13 months
+                if tishri_idx >= 5:
+                    adjusted_nisan = sorted_moons[tishri_idx - 5]
+                    year_starts[y] = adjusted_nisan
+
+    return year_starts
+
+
 def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[dt.datetime,float]:
     """Count the number of new moons from start_date to end_date."""
     date_cursor = start_date
@@ -129,12 +261,25 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[
     result = dict()
 
     while date_cursor <= end_date:
-        phase, angle = get_moon_phase(date_cursor)
+        # Check phase at noon to be consistent with emoji display
+        phase, angle = get_moon_phase(_at_noon(date_cursor))
         if phase == 'New Moon':
+            # Walk backwards to find the FIRST day of this new moon
+            first_day = date_cursor
+            first_angle = angle
+            while first_day > start_date:
+                prev_day = first_day - dt.timedelta(days=1)
+                prev_phase, prev_angle = get_moon_phase(_at_noon(prev_day))
+                if prev_phase == 'New Moon':
+                    first_day = prev_day
+                    first_angle = prev_angle
+                else:
+                    break
+
             new_moon_count += 1
+            result[first_day] = first_angle
             # Move forward by approximately one lunar cycle to find the next new moon
-            result[date_cursor]= angle
-            date_cursor += dt.timedelta(days=29)
+            date_cursor = first_day + dt.timedelta(days=29)
         else:
             # Increment day by day to check the next date
             date_cursor += dt.timedelta(days=1)
