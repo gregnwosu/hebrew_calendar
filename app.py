@@ -41,10 +41,11 @@ def _build_data():
     sabbath_dates = {_normalise_date(d) for d in sabbath_list}
 
     year_starts = get_lunar_year_starts(raw_moons, 2024, 2027)
+    new_moon_list = list(raw_moons.keys())
 
     feast_dates = {}
     for y, start in year_starts.items():
-        raw = FeastDays.find_feast_days(start)
+        raw = FeastDays.find_feast_days(start, new_moon_list)
         for k, v in raw.items():
             feast_dates[_normalise_date(k)] = v
 
