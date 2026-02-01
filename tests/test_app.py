@@ -133,12 +133,12 @@ class TestFeastDays:
         names = [fd.name for fd in FEAST_DATES.values()]
         assert any("Atonement" in n for n in names), "Day of Atonement not found"
 
-    def test_sukkot_seven_days_per_year(self):
-        """Each lunar year should have exactly 7 Sukkot days."""
+    def test_sukkot_eight_days_per_year(self):
+        """Each lunar year should have exactly 8 Sukkot days (7 days + Shemini Atzeret)."""
         sukkot_days = sorted(k for k, v in FEAST_DATES.items() if "Tabernacles" in v.name)
-        # Group by contiguous blocks (7 consecutive days = one observance)
-        assert len(sukkot_days) >= 7, f"Expected at least 7 Sukkot days, got {len(sukkot_days)}"
-        assert len(sukkot_days) % 7 == 0, f"Sukkot days should be multiple of 7, got {len(sukkot_days)}"
+        # Group by contiguous blocks (8 consecutive days = one observance)
+        assert len(sukkot_days) >= 8, f"Expected at least 8 Sukkot days, got {len(sukkot_days)}"
+        assert len(sukkot_days) % 8 == 0, f"Sukkot days should be multiple of 8, got {len(sukkot_days)}"
 
     def test_unleavened_bread_seven_days_per_year(self):
         days = sorted(k for k, v in FEAST_DATES.items() if "Unleavened" in v.name)
