@@ -7,6 +7,7 @@ from app import (
     get_moon_emoji, get_day_badges, create_calendar_grid, get_day_info,
 )
 from moon import FeastDays, FeastDay, get_moon_phase, enumerate_new_moons, enumerate_sabbaths, add_months_and_days
+from scriptures import SCRIPTURE_TEXT
 
 
 # ---------------------------------------------------------------------------
@@ -373,3 +374,27 @@ class TestFlaskServer:
             resp = client.get("/_dash-layout")
             body = resp.get_data(as_text=True)
             assert "Hebrew Calendar" in body
+
+
+# ---------------------------------------------------------------------------
+# Scripture references
+# ---------------------------------------------------------------------------
+
+class TestScriptureRefs:
+    def test_every_feast_has_bible_refs(self):
+        for fd in FeastDays:
+            assert fd.value.bible_refs, f"{fd.name} has no bible_refs"
+            assert len(fd.value.bible_refs) >= 1
+
+    def test_all_refs_have_scripture_text(self):
+        for fd in FeastDays:
+            for ref in fd.value.bible_refs:
+                assert ref in SCRIPTURE_TEXT, f"Missing scripture text for {ref}"
+                assert len(SCRIPTURE_TEXT[ref]) > 0, f"Empty scripture text for {ref}"
+
+    def test_feast_day_info_has_accordion(self):
+        import dash_bootstrap_components as dbc
+        feast_date = list(FEAST_DATES.keys())[0]
+        info = get_day_info(feast_date)
+        text = str(info)
+        assert "Accordion" in text, "No Accordion found in feast day info"

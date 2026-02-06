@@ -3,6 +3,7 @@ import datetime as dt
 from dash import Dash, html, dcc, callback, Output, Input, State, ALL, ctx, clientside_callback
 import dash_bootstrap_components as dbc
 from moon import FeastDays, enumerate_sabbaths, enumerate_new_moons, get_moon_phase, get_lunar_year_starts
+from scriptures import SCRIPTURE_TEXT
 
 # Initialize the app with Bootstrap styling
 app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
@@ -30,6 +31,7 @@ MOON_EMOJI = {
 
 FEAST_EMOJI = "\U0001F389"   # 🎉
 SABBATH_EMOJI = "\U0001F54A\uFE0F"  # 🕊️
+NEW_YEAR_EMOJI = "\U0001F387"  # 🎇
 
 
 def _build_data():
@@ -49,10 +51,12 @@ def _build_data():
         for k, v in raw.items():
             feast_dates[_normalise_date(k)] = v
 
-    return new_moon_dates, sabbath_dates, feast_dates
+    new_year_dates = {_normalise_date(d) for d in year_starts.values()}
+
+    return new_moon_dates, sabbath_dates, feast_dates, new_year_dates
 
 
-NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES = _build_data()
+NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES, NEW_YEAR_DATES = _build_data()
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +72,8 @@ def get_moon_emoji(day_date):
 def get_day_badges(day_date):
     """Return list of emoji badges for a calendar day."""
     badges = []
+    if day_date in NEW_YEAR_DATES:
+        badges.append(NEW_YEAR_EMOJI)
     if day_date in FEAST_DATES:
         badges.append(FEAST_EMOJI)
     if day_date in SABBATH_DATES:
@@ -139,6 +145,11 @@ def get_day_info(day_date):
     info = [html.H6(day_date.strftime("%A, %d %B %Y"), className="mb-3")]
     info.append(html.P(f"{moon_em} {phase} (angle: {angle:.1f}°)", style={"fontSize": "1.1rem"}))
 
+    if day_date in NEW_YEAR_DATES:
+        info.append(html.P(
+            f"{NEW_YEAR_EMOJI} Nisan 1 — Head of the Year (Rosh HaShanah)",
+            style={"color": "#ffc107", "fontWeight": "bold", "fontSize": "1.1rem"}
+        ))
     if day_date in NEW_MOON_DATES:
         info.append(html.P(
             f"\U0001F311 New Moon — start of lunar month",
@@ -154,8 +165,17 @@ def get_day_info(day_date):
         children = [html.H5(f"{FEAST_EMOJI} {feast.name}", style={"color": "#75b798"})]
         if feast.description:
             children.append(html.P(feast.description))
-        if feast.bible_ref:
-            children.append(html.Small(f"Reference: {feast.bible_ref}", className="text-muted"))
+        if feast.bible_refs:
+            children.append(dbc.Accordion(
+                [dbc.AccordionItem(
+                    html.P(SCRIPTURE_TEXT.get(ref, ""), style={"whiteSpace": "pre-wrap"}),
+                    title=ref,
+                ) for ref in feast.bible_refs],
+                start_collapsed=True,
+                always_open=True,
+                flush=True,
+                className="mt-2",
+            ))
         info.append(html.Div(children))
     return info
 
@@ -227,6 +247,10 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Span(SABBATH_EMOJI, style={"marginRight": "8px"}),
                         "Sabbath"
+                    ], className="mb-2"),
+                    html.Div([
+                        html.Span(NEW_YEAR_EMOJI, style={"marginRight": "8px"}),
+                        "New Year (Nisan 1)"
                     ]),
                 ])
             ])

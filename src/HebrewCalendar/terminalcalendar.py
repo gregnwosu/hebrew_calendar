@@ -52,7 +52,7 @@ class TerminalCalendar:
         current_date = dt.date(self.current_date.year, self.current_date.month, self.highlighted_day)
         if current_date in self.feast_dates:
             feast = self.feast_dates[current_date]
-            self.stdscr.addstr(10, 0, f"{feast.name}  ({feast.bible_ref}) ")
+            self.stdscr.addstr(10, 0, f"{feast.name}  ({', '.join(feast.bible_refs) if feast.bible_refs else ''}) ")
             self.stdscr.addstr(11, 0, f"{feast.description}")
         if current_date in self.new_moon_dates:
             phase_angle = self.new_moon_dates[current_date]

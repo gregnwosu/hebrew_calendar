@@ -54,20 +54,20 @@ class FeastDay:
     days: List[int]
     name: str
     description: Optional[str]  = None
-    bible_ref: Optional[str] = None
+    bible_refs: Optional[List[str]] = None
     link: Optional[str] = None
 
 class FeastDays(Enum):
     # SABBATH = FeastDay(name='Sabbath', description='A day of rest observed every seventh day.', lunar_month=1, days ='Every seventh day', bible_ref='Leviticus 23:3')
-    PASSOVER = FeastDay(name='Passover (Pesach)', description="Commemorates the Israelites' deliverance from slavery in Egypt.", lunar_month=1,days=[14], bible_ref='Leviticus 23:5')
-    UNLEAVENED_BREAD = FeastDay(name='Feast of Unleavened Bread', description='A festival lasting seven days during which unleavened bread is eaten.', lunar_month=1, days=[15,16,17,18,19,20,21], bible_ref='Leviticus 23:6-8')
-    #FIRST_FRUITS = FeastDay(name='Firstfruits', description='An offering of the first fruits of the harvest.', lunar_month=1, days='Day after the Sabbath during the Feast of Unleavened Bread', bible_ref='Leviticus 23:9-14')
-    FEAST_OF_WEEKS = FeastDay(name='Feast of Weeks (Shavuot)', description='Celebrated fifty days after the Firstfruits. Also known as Pentecost.', lunar_month=1,days=[50], bible_ref='Leviticus 23:15-21')
-    FEAST_OF_TRUMPETS = FeastDay(name='Feast of Trumpets (Rosh Hashanah)', description="New Year's festival marked by the blowing of trumpets.", lunar_month=7, days=[1], bible_ref='Leviticus 23:23-25')
-    DAY_OF_ATONEMENT = FeastDay(name='Day of Atonement (Yom Kippur)', description='A day of fasting and repentance.', lunar_month=7,days=[10], bible_ref='Leviticus 23:26-32')
-    FEAST_OF_TABERNACLES =FeastDay(name='Feast of Tabernacles (Sukkot)', description="A seven-day festival plus the 8th day assembly (Shemini Atzeret).", lunar_month=7, days=[15,16,17,18,19,20,21,22], bible_ref='Leviticus 23:33-36, 39-43')
-    PURIM = FeastDay(name='Purim', description="Commemorates the deliverance of the Jewish people from Haman's plot.", lunar_month=12,days=[14,15], bible_ref='Esther 9:20-32')
-    FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=9,days=[25,26,27,28,29,30,31,32], bible_ref='John 10:22')
+    PASSOVER = FeastDay(name='Passover (Pesach)', description="Commemorates the Israelites' deliverance from slavery in Egypt.", lunar_month=1, days=[14], bible_refs=['Leviticus 23:5', 'Exodus 12:1-14'])
+    UNLEAVENED_BREAD = FeastDay(name='Feast of Unleavened Bread', description='A festival lasting seven days during which unleavened bread is eaten.', lunar_month=1, days=[15,16,17,18,19,20,21], bible_refs=['Leviticus 23:6-8', 'Exodus 12:15-20'])
+    #FIRST_FRUITS = FeastDay(name='Firstfruits', description='An offering of the first fruits of the harvest.', lunar_month=1, days='Day after the Sabbath during the Feast of Unleavened Bread', bible_refs=['Leviticus 23:9-14'])
+    FEAST_OF_WEEKS = FeastDay(name='Feast of Weeks (Shavuot)', description='Celebrated fifty days after the Firstfruits. Also known as Pentecost.', lunar_month=1, days=[50], bible_refs=['Leviticus 23:15-21', 'Acts 2:1-4'])
+    FEAST_OF_TRUMPETS = FeastDay(name='Feast of Trumpets (Rosh Hashanah)', description="New Year's festival marked by the blowing of trumpets.", lunar_month=7, days=[1], bible_refs=['Leviticus 23:23-25', 'Psalm 81:3'])
+    DAY_OF_ATONEMENT = FeastDay(name='Day of Atonement (Yom Kippur)', description='A day of fasting and repentance.', lunar_month=7, days=[10], bible_refs=['Leviticus 23:26-32', 'Leviticus 16:29-34'])
+    FEAST_OF_TABERNACLES = FeastDay(name='Feast of Tabernacles (Sukkot)', description="A seven-day festival plus the 8th day assembly (Shemini Atzeret).", lunar_month=7, days=[15,16,17,18,19,20,21,22], bible_refs=['Leviticus 23:33-43', 'Zechariah 14:16-19', 'John 7:37-38', '2 Maccabees 10:6-8'])
+    PURIM = FeastDay(name='Purim', description="Commemorates the deliverance of the Jewish people from Haman's plot.", lunar_month=12, days=[14,15], bible_refs=['Esther 9:20-32', '2 Maccabees 15:36'])
+    FEAST_OF_DEDICATION = FeastDay(name='Hanukkah (Feast of Dedication)', description='Commemorates the Maccabean revolt and rededication of the Second Temple.', lunar_month=9, days=[25,26,27,28,29,30,31,32], bible_refs=['John 10:22-23', '1 Maccabees 4:36-59', '2 Maccabees 1:18'])
 
     @staticmethod
     def find_feast_days(year_start: dt.datetime, new_moons: List[dt.datetime] = None) -> Dict[dt.date, FeastDay]:

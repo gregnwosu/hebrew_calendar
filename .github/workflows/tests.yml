@@ -9,12 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: astral-sh/setup-uv@v4
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: uv sync
       - name: Run tests
-        run: pytest test_reference_comparison.py tests/ -q
+        run: uv run pytest test_reference_comparison.py tests/ -q
