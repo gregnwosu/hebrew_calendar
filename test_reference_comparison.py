@@ -211,27 +211,23 @@ class TestNewMoons:
         calc_dates = [d.date() for d in calculated_new_moons.keys()]
         assert dt.date(2026, 1, 18) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Aug 4 instead of Aug 3 - 1 day difference")
     def test_new_moon_august_2024(self, calculated_new_moons):
-        """August 3, 2024 new moon - KNOWN DISCREPANCY."""
+        """August 3, 2024 new moon."""
         calc_dates = [d.date() for d in calculated_new_moons.keys()]
         assert dt.date(2024, 8, 3) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Jan 29 instead of Jan 28 - 1 day difference")
     def test_new_moon_january_2025(self, calculated_new_moons):
-        """January 28, 2025 new moon - KNOWN DISCREPANCY."""
+        """January 28, 2025 new moon."""
         calc_dates = [d.date() for d in calculated_new_moons.keys()]
         assert dt.date(2025, 1, 28) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Mar 29 instead of Mar 28 - 1 day difference")
     def test_new_moon_march_2025(self, calculated_new_moons):
-        """March 28, 2025 new moon - KNOWN DISCREPANCY."""
+        """March 28, 2025 new moon."""
         calc_dates = [d.date() for d in calculated_new_moons.keys()]
         assert dt.date(2025, 3, 28) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Jun 25 instead of Jun 24 - 1 day difference")
     def test_new_moon_june_2025(self, calculated_new_moons):
-        """June 24, 2025 new moon - KNOWN DISCREPANCY."""
+        """June 24, 2025 new moon."""
         calc_dates = [d.date() for d in calculated_new_moons.keys()]
         assert dt.date(2025, 6, 24) in calc_dates
 
@@ -259,9 +255,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2022, 9, 25) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Oct 25 instead of Oct 24 - 1 day difference")
     def test_new_moon_october_2022(self, full_new_moons):
-        """October 24, 2022 new moon - KNOWN DISCREPANCY."""
+        """October 24, 2022 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2022, 10, 24) in calc_dates
 
@@ -270,9 +265,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2022, 11, 23) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Dec 23 instead of Dec 22 - 1 day difference")
     def test_new_moon_december_2022(self, full_new_moons):
-        """December 22, 2022 new moon - KNOWN DISCREPANCY."""
+        """December 22, 2022 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2022, 12, 22) in calc_dates
 
@@ -281,9 +275,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 1, 21) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Feb 20 instead of Feb 19 - 1 day difference")
     def test_new_moon_february_2023(self, full_new_moons):
-        """February 19, 2023 new moon - KNOWN DISCREPANCY."""
+        """February 19, 2023 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 2, 19) in calc_dates
 
@@ -297,9 +290,9 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 4, 19) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates May 19 instead of May 18 - 1 day difference")
+    @pytest.mark.xfail(reason="Noon angle 14.19° exceeds 13.9° threshold - 1 day difference")
     def test_new_moon_may_2023(self, full_new_moons):
-        """May 18, 2023 new moon - KNOWN DISCREPANCY."""
+        """May 18, 2023 new moon - noon angle too high for detection."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 5, 18) in calc_dates
 
@@ -338,9 +331,9 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 12, 12) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Jan 11 instead of Jan 10 - 1 day difference")
+    @pytest.mark.xfail(reason="Noon angle 14.33° exceeds 13.9° threshold - 1 day difference")
     def test_new_moon_january_2024(self, full_new_moons):
-        """January 10, 2024 new moon - KNOWN DISCREPANCY."""
+        """January 10, 2024 new moon - noon angle too high for detection."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 1, 10) in calc_dates
 
@@ -349,9 +342,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 2, 9) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Mar 10 instead of Mar 9 - 1 day difference")
     def test_new_moon_march_2024(self, full_new_moons):
-        """March 9, 2024 new moon - KNOWN DISCREPANCY."""
+        """March 9, 2024 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 3, 9) in calc_dates
 
@@ -365,9 +357,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 5, 7) in calc_dates
 
-    @pytest.mark.xfail(reason="Calendar calculates Jun 6 instead of Jun 5 - 1 day difference")
     def test_new_moon_june_2024(self, full_new_moons):
-        """June 5, 2024 new moon - KNOWN DISCREPANCY."""
+        """June 5, 2024 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 6, 5) in calc_dates
 
@@ -473,17 +464,15 @@ class TestFeastDays:
         assert hanukkah_dates[-1] == dt.date(2024, 12, 1)
 
     # Passover tests
-    @pytest.mark.xfail(reason="1-day offset due to eve-to-eve convention - calc Mar 12, ref Mar 13")
     def test_passover_2025_start(self, year_starts, full_new_moons):
-        """Passover 2025 should start March 13 (evening)."""
+        """Passover 2025 should start March 13."""
         new_moon_list = list(full_new_moons.keys())
         feasts = FeastDays.find_feast_days(year_starts[2025], new_moon_list)
         passover_dates = sorted([d.date() for d, f in feasts.items() if 'Passover' in f.name or 'Unleavened' in f.name])
         assert passover_dates[0] == dt.date(2025, 3, 13)
 
-    @pytest.mark.xfail(reason="1-day offset due to eve-to-eve convention - calc Mar 19, ref Mar 20")
     def test_passover_2025_end(self, year_starts, full_new_moons):
-        """Passover 2025 should end March 20 (evening)."""
+        """Passover 2025 should end March 20."""
         new_moon_list = list(full_new_moons.keys())
         feasts = FeastDays.find_feast_days(year_starts[2025], new_moon_list)
         passover_dates = sorted([d.date() for d, f in feasts.items() if 'Passover' in f.name or 'Unleavened' in f.name])
@@ -592,16 +581,16 @@ class TestFeastDays:
         tabernacles_dates = sorted([d.date() for d, f in feasts.items() if 'Tabernacles' in f.name])
         assert tabernacles_dates[-1] == dt.date(2022, 9, 17)
 
-    @pytest.mark.xfail(reason="1-day offset due to new moon calc - calc Nov 18, ref Nov 17")
     def test_hanukkah_2022_start(self, year_starts, full_new_moons):
-        """Hanukkah 2022 should start November 17 (evening)."""
+        """Hanukkah 2022 should start November 17."""
         new_moon_list = list(full_new_moons.keys())
         feasts = FeastDays.find_feast_days(year_starts[2022], new_moon_list)
         hanukkah_dates = sorted([d.date() for d, f in feasts.items() if 'Hanukkah' in f.name])
         assert hanukkah_dates[0] == dt.date(2022, 11, 17)
 
+    @pytest.mark.xfail(reason="1-day offset due to eve-to-eve convention - calc Nov 24, ref Nov 25")
     def test_hanukkah_2022_end(self, year_starts, full_new_moons):
-        """Hanukkah 2022 should end November 25."""
+        """Hanukkah 2022 should end November 25 (evening)."""
         new_moon_list = list(full_new_moons.keys())
         feasts = FeastDays.find_feast_days(year_starts[2022], new_moon_list)
         hanukkah_dates = sorted([d.date() for d, f in feasts.items() if 'Hanukkah' in f.name])

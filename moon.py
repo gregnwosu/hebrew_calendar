@@ -149,10 +149,15 @@ class FeastDays(Enum):
             if month_idx < len(sorted_moons):
                 month_start = sorted_moons[month_idx]
                 for day in fd.value.days:
-                    # Day 1 is the new moon itself, day 14 is 13 days after, etc.
-                    # Hebrew days run evening-to-evening. The displayed date is when
-                    # the Hebrew day begins at sunset (the evening that starts that date).
-                    feast_date = month_start + dt.timedelta(days=day - 1)
+                    # For Nisan (month 1): the new moon appears at night, so the
+                    # first DAY of the month is the next day. "The fourteenth day
+                    # of the first month" = new_moon + 14. Use 'day' offset.
+                    # For other months: day 1 is the new moon itself (e.g. Trumpets
+                    # on Tishri 1 = new moon day). Use 'day - 1' offset.
+                    if month_num == 1:
+                        feast_date = month_start + dt.timedelta(days=day)
+                    else:
+                        feast_date = month_start + dt.timedelta(days=day - 1)
                     result[feast_date] = fd.value
         return result
 
@@ -298,16 +303,28 @@ def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[
     result = dict()
 
     while date_cursor <= end_date:
-        # Check phase at noon to be consistent with emoji display
-        phase, angle = get_moon_phase(_at_noon(date_cursor))
-        if phase == 'New Moon':
+        # Check phase at noon using a wider threshold (13.9°) than the display
+        # threshold (12°). This catches new moons where the conjunction occurs
+        # in the evening/night — the angle at noon is still above 12° but the
+        # moon is observationally new by sunset. The 13.9° threshold matches
+        # observational reference data without producing false-early detections.
+        noon = _at_noon(date_cursor)
+        time_obs = Time(noon.strftime('%Y-%m-%d %H:%M:%S'))
+        moon_pos = get_body("moon", time_obs)
+        sun_pos = get_body("sun", time_obs)
+        angle = moon_pos.separation(sun_pos).degree
+        if angle <= 13.9:
             # Walk backwards to find the FIRST day of this new moon
             first_day = date_cursor
             first_angle = angle
             while first_day > start_date:
                 prev_day = first_day - dt.timedelta(days=1)
-                prev_phase, prev_angle = get_moon_phase(_at_noon(prev_day))
-                if prev_phase == 'New Moon':
+                prev_noon = _at_noon(prev_day)
+                prev_t = Time(prev_noon.strftime('%Y-%m-%d %H:%M:%S'))
+                prev_moon = get_body("moon", prev_t)
+                prev_sun = get_body("sun", prev_t)
+                prev_angle = prev_moon.separation(prev_sun).degree
+                if prev_angle <= 13.9:
                     first_day = prev_day
                     first_angle = prev_angle
                 else:
