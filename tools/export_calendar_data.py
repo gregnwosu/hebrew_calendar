@@ -6,6 +6,7 @@ static asset so the Flutter app needs no astronomy library at runtime.
 """
 
 import datetime as dt
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -24,9 +25,9 @@ from scriptures import SCRIPTURE_TEXT
 
 # Date range to export
 START = dt.datetime(2024, 1, 1)
-END = dt.datetime(2028, 1, 1)
+END = dt.datetime(2037, 1, 1)
 YEAR_START = 2024
-YEAR_END = 2027
+YEAR_END = 2036
 
 
 def _date_str(d):
@@ -122,6 +123,11 @@ def main():
         "days": days,
     }
 
+    # Compute MD5 of the data (excluding the checksum field itself)
+    data_json = json.dumps(output, separators=(",", ":"), sort_keys=True)
+    md5 = hashlib.md5(data_json.encode()).hexdigest()
+    output["md5"] = md5
+
     # Write JSON
     out_dir = Path(__file__).resolve().parent.parent / "flutter" / "assets"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -134,6 +140,7 @@ def main():
     print(f"Wrote {out_path} ({size_mb:.1f} MB)")
     print(f"  {len(days)} days, {len(output['newMoons'])} new moons, "
           f"{len(output['sabbaths'])} sabbaths, {len(output['newYears'])} new years")
+    print(f"  MD5: {md5}")
 
 
 if __name__ == "__main__":
