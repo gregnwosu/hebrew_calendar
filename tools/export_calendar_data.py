@@ -79,6 +79,7 @@ def main():
             (k.date() if isinstance(k, dt.datetime) else k) for k in raw_moons
         }:
             day_data["isNewMoon"] = True
+            day_data["phase"] = "New Moon"
             # Find the angle from raw_moons
             for k, v in raw_moons.items():
                 kd = k.date() if isinstance(k, dt.datetime) else k

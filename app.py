@@ -65,6 +65,8 @@ NEW_MOON_DATES, SABBATH_DATES, FEAST_DATES, NEW_YEAR_DATES = _build_data()
 
 def get_moon_emoji(day_date):
     """Return moon phase emoji for a given date."""
+    if day_date in NEW_MOON_DATES:
+        return MOON_EMOJI["New Moon"]
     phase, _ = get_moon_phase(dt.datetime.combine(day_date, dt.time(12, 0)))
     return MOON_EMOJI.get(phase, "")
 
