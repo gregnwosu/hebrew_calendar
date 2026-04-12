@@ -29,6 +29,7 @@ Builds:
       - $$flutter$$/bin/flutter build apk --release
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags
+UpdateCheckMode: HTTP
+UpdateCheckData: https://raw.githubusercontent.com/gregnwosu/hebrew_calendar/main/flutter/pubspec.yaml|version:\s+([\d.]+)\+(\d+)|.|version:\s+([\d.]+)\+\d+
 CurrentVersion: 1.1.1
 CurrentVersionCode: 3
