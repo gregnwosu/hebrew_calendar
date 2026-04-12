@@ -1,5 +1,8 @@
 # Hebrew Lunar Calendar
 
+[![F-Droid](https://img.shields.io/f-droid/v/com.heeboe.hebrewcalendar.svg?logo=F-Droid)](https://f-droid.org/packages/com.heeboe.hebrewcalendar)
+[![GitHub release](https://img.shields.io/github/release/gregnwosu/hebrew_calendar.svg?logo=github)](https://github.com/gregnwosu/hebrew_calendar/releases)
+
 ## About
 This project provides a Hebrew Lunar Calendar for a specified year, it incldues the following features:
 * The calendar is based on the Hebrew calendar
