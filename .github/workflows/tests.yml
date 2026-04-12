@@ -16,3 +16,16 @@ jobs:
         run: uv sync
       - name: Run tests
         run: uv run pytest test_reference_comparison.py tests/ -q
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+      - name: Build APK
+        working-directory: flutter
+        run: |
+          flutter pub get
+          flutter build apk --release
