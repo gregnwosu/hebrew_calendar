@@ -1,0 +1,2 @@
+- Extended calendar data through 2036
+- Added MD5 integrity verification for bundled data
