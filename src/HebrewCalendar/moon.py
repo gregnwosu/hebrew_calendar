@@ -62,7 +62,7 @@ class FeastDays(Enum):
     PASSOVER = FeastDay(name='Passover (Pesach)', description="Commemorates the Israelites' deliverance from slavery in Egypt.", lunar_month=1,days=[14], bible_ref='Leviticus 23:5')
     UNLEAVENED_BREAD = FeastDay(name='Feast of Unleavened Bread', description='A festival lasting seven days during which unleavened bread is eaten.', lunar_month=1, days=[15,16,17,18,19,20,21], bible_ref='Leviticus 23:6-8')
     #FIRST_FRUITS = FeastDay(name='Firstfruits', description='An offering of the first fruits of the harvest.', lunar_month=1, days='Day after the Sabbath during the Feast of Unleavened Bread', bible_ref='Leviticus 23:9-14')
-    FEAST_OF_WEEKS = FeastDay(name='Feast of Weeks (Shavuot)', description='Celebrated fifty days after the Firstfruits. Also known as Pentecost.', lunar_month=1,days=[50], bible_ref='Leviticus 23:15-21')
+    FEAST_OF_WEEKS = FeastDay(name='Feast of Weeks (Shavuot)', description='Celebrated fifty days after Passover. Also known as Pentecost.', lunar_month=1,days=[50], bible_ref='Leviticus 23:15-21')
     FEAST_OF_TRUMPETS = FeastDay(name='Feast of Trumpets (Rosh Hashanah)', description="New Year's festival marked by the blowing of trumpets.", lunar_month=7, days=[1], bible_ref='Leviticus 23:23-25')
     DAY_OF_ATONEMENT = FeastDay(name='Day of Atonement (Yom Kippur)', description='A day of fasting and repentance.', lunar_month=7,days=[10], bible_ref='Leviticus 23:26-32')
     FEAST_OF_TABERNACLES =FeastDay(name='Feast of Tabernacles (Sukkot)', description="A seven-day festival plus the 8th day assembly (Shemini Atzeret).", lunar_month=7, days=[15,16,17,18,19,20,21,22], bible_ref='Leviticus 23:33-36, 39-43')
@@ -81,7 +81,14 @@ class FeastDays(Enum):
         if new_moons is not None:
             return FeastDays._find_feast_days_from_moons(year_start, new_moons)
         # Fallback to old method
-        result = {add_months_and_days(lunar_year_start=year_start, months=fd.value.lunar_month, days=d):fd.value for fd in FeastDays for d in fd.value.days}
+        result = {}
+        for fd in FeastDays:
+            if fd is FeastDays.FEAST_OF_WEEKS:
+                passover = add_months_and_days(lunar_year_start=year_start, months=1, days=14)
+                result[passover + dt.timedelta(days=50)] = fd.value
+                continue
+            for d in fd.value.days:
+                result[add_months_and_days(lunar_year_start=year_start, months=fd.value.lunar_month, days=d)] = fd.value
         return result
 
     @staticmethod
@@ -108,6 +115,11 @@ class FeastDays(Enum):
 
         result = {}
         for fd in FeastDays:
+            if fd is FeastDays.FEAST_OF_WEEKS:
+                passover = sorted_moons[nisan_idx] + dt.timedelta(days=13)
+                result[passover + dt.timedelta(days=50)] = fd.value
+                continue
+
             # Month index: Nisan is month 1, so month N is at nisan_idx + (N-1)
             month_idx = nisan_idx + fd.value.lunar_month - 1
             if month_idx < len(sorted_moons):

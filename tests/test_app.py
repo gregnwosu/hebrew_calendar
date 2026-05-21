@@ -161,6 +161,13 @@ class TestFeastDays:
         feast_years = {k.year for k in FEAST_DATES}
         assert 2026 in feast_years, f"No feast data for 2026. Years covered: {sorted(feast_years)}"
 
+    def test_shavuot_2026_is_counted_from_passover(self):
+        shavuot = {
+            k for k, v in FEAST_DATES.items()
+            if "Shavuot" in v.name or "Weeks" in v.name
+        }
+        assert dt.date(2026, 5, 21) in shavuot
+
 
 # ---------------------------------------------------------------------------
 # Multi-year data coverage

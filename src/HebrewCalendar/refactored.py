@@ -6,7 +6,17 @@ from astropy.coordinates import get_body
 import datetime as dt
 import pandas as pd
 import calendar
-import streamlit as st
+try:
+    import streamlit as st
+except ModuleNotFoundError:
+    class _StreamlitFallback:
+        @staticmethod
+        def cache_data(func=None, **_kwargs):
+            if func is None:
+                return lambda f: f
+            return func
+
+    st = _StreamlitFallback()
 from zoneinfo import ZoneInfo  # For Python 3.9+
 import numpy as np
 
@@ -208,8 +218,10 @@ def add_months_and_days(lunar_year_start: dt.datetime, months: int, days: int,
 
     nth_new_moon = lunar_year_start + dt.timedelta(days=days_until_month)
 
-    # Days are counted from the new moon day (day 0), so simply add ``days``
-    target_date = nth_new_moon + dt.timedelta(days=days)
+    # Nisan feast dates in this project are shown from the evening that opens
+    # the biblical day. Other month-numbered feasts use day 1 as the new moon.
+    day_offset = days if months == 1 else days - 1
+    target_date = nth_new_moon + dt.timedelta(days=day_offset)
     return dt.datetime.combine(target_date, dt.datetime.min.time())
 
 @st.cache_data
@@ -259,6 +271,9 @@ def enumerate_sabbaths(new_moon_dates: List[dt.date], end_date: dt.date) -> List
         while sabbath_date < cycle_end_date:
             sabbaths.append(sabbath_date)
             sabbath_date += dt.timedelta(days=7)
+
+        if i + 1 < len(new_moon_dates) and (cycle_end_date - sabbaths[-1]).days == 2:
+            sabbaths.append(cycle_end_date - dt.timedelta(days=1))
 
     return sabbaths
 
