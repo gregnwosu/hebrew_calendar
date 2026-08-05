@@ -1,0 +1,1 @@
+- Added app icon to the F-Droid listing
