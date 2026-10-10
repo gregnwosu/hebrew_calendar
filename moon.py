@@ -5,8 +5,9 @@ from enum import Enum
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 from functools import reduce
+import numpy as np
 from astropy.time import Time
-from astropy.coordinates import get_body, get_sun
+from astropy.coordinates import get_body, get_sun, GeocentricTrueEcliptic
 import datetime as dt
 
 def get_moon_phase(date_obs):
@@ -168,6 +169,7 @@ class Location(Enum):
     LONDON = Position(51.5072, -0.1276)
     SYDNEY = Position(-33.8688, 151.2093)
     TOKYO = Position(35.6762, 139.6503)
+    JERUSALEM = Position(31.7683, 35.2137)
 
 
 def calculate_sunset(date_obs: dt.datetime, location: Location):
@@ -296,48 +298,104 @@ def get_lunar_year_starts(new_moons: Dict[dt.datetime, float],
     return year_starts
 
 
+# Days run evening to evening, reckoned at Jerusalem, and the evening is taken
+# as nightfall (sun 12° below the horizon) rather than sunset. Both fit the
+# 2022-2026 reference list, but sunset would put the October 2026 conjunction
+# (15:50 UTC, 37 minutes after Jerusalem sunset) on the 10th instead of the 9th.
+DAY_START_LOCATION = Location.JERUSALEM
+DAY_START_SUN_ALTITUDE = -12.0
+
+
+def _elongation(jd):
+    """Moon's ecliptic longitude minus the sun's in degrees, wrapped to [-180, 180)."""
+    t = Time(jd, format='jd')
+    frame = GeocentricTrueEcliptic(equinox=t)
+    moon_lon = get_body("moon", t).transform_to(frame).lon.degree
+    sun_lon = get_sun(t).transform_to(frame).lon.degree
+    return (moon_lon - sun_lon + 180.0) % 360.0 - 180.0
+
+
+def _sun_altitude(jd, position: Position):
+    """Sun's altitude in degrees at a position, without refraction.
+
+    Treats UTC as UT1 (under a second apart) so no earth-orientation data has
+    to be downloaded; agrees with astropy's AltAz transform to about 0.005°.
+    """
+    t = Time(jd, format='jd')
+    days = np.asarray(jd) - 2451545.0  # days since J2000
+    sun_lon = get_sun(t).transform_to(GeocentricTrueEcliptic(equinox=t)).lon.radian
+    obliquity = np.radians(23.4393 - 3.563e-7 * days)
+    dec = np.arcsin(np.sin(obliquity) * np.sin(sun_lon))
+    ra = np.arctan2(np.cos(obliquity) * np.sin(sun_lon), np.cos(sun_lon))
+    hour_angle = np.radians(280.46061837 + 360.98564736629 * days + position.longitude) - ra
+    lat = np.radians(position.latitude)
+    return np.degrees(np.arcsin(np.sin(lat) * np.sin(dec) + np.cos(lat) * np.cos(dec) * np.cos(hour_angle)))
+
+
+def _bisect(f, lo, hi, steps: int):
+    """Vectorised bisection over arrays of Julian dates where f(lo) < 0 <= f(hi)."""
+    for _ in range(steps):
+        mid = (lo + hi) / 2
+        before = f(mid) < 0
+        lo, hi = np.where(before, mid, lo), np.where(before, hi, mid)
+    return hi
+
+
+def find_conjunctions(start_date: dt.datetime, end_date: dt.datetime) -> List[dt.datetime]:
+    """Return the UTC instant of every astronomical new moon in the range.
+
+    The new moon is the moment the moon and sun share the same geocentric
+    ecliptic longitude, which is how published tables (e.g. USNO) define it.
+    """
+    jd = Time(start_date).jd + np.arange((end_date - start_date).days + 2)
+    elongation = _elongation(jd)
+    # Elongation climbs through zero at new moon (at full moon it wraps downward)
+    i = np.where((elongation[:-1] < 0) & (elongation[1:] >= 0))[0]
+    if len(i) == 0:
+        return []
+    lo, hi, f_lo, f_hi = jd[i], jd[i + 1], elongation[i], elongation[i + 1]
+    # Elongation is nearly linear over a day, so three secant steps get well under a second
+    for _ in range(3):
+        slope = np.where(f_hi == f_lo, 1.0, f_hi - f_lo)
+        lo, hi, f_lo = hi, hi - f_hi * (hi - lo) / slope, f_hi
+        f_hi = _elongation(hi)
+    found = Time(hi, format='jd').to_datetime()
+    return [c for c in found if start_date <= c <= end_date]
+
+
+def new_moon_days(conjunctions: List[dt.datetime]) -> List[dt.date]:
+    """Return the date on which each conjunction's evening-to-evening day begins.
+
+    A conjunction before nightfall belongs to the day that began the evening
+    before, so it is dated one day earlier than its civil date.
+    """
+    if not conjunctions:
+        return []
+    position = DAY_START_LOCATION.value
+    # Civil date at the day-start location, from local mean solar time
+    local = [(c + dt.timedelta(hours=position.longitude / 15)).date() for c in conjunctions]
+    noon = Time([dt.datetime(d.year, d.month, d.day, 12) for d in local]).jd - position.longitude / 360
+    # 13 halvings of the half day from noon to midnight resolve nightfall to about 5 seconds
+    nightfall = _bisect(lambda jd: DAY_START_SUN_ALTITUDE - _sun_altitude(jd, position), noon, noon + 0.5, steps=13)
+    return [d if c >= n else d - dt.timedelta(days=1)
+            for d, c, n in zip(local, Time(conjunctions).jd, nightfall)]
+
+
 def enumerate_new_moons(start_date: dt.datetime, end_date: dt.datetime) -> Dict[dt.datetime,float]:
-    """Count the number of new moons from start_date to end_date."""
-    date_cursor = start_date
-    new_moon_count = 0
-    result = dict()
+    """Return each new moon day in the range with its sun-moon angle at noon UTC.
 
-    while date_cursor <= end_date:
-        # Check phase at noon using a wider threshold (13.9°) than the display
-        # threshold (12°). This catches new moons where the conjunction occurs
-        # in the evening/night — the angle at noon is still above 12° but the
-        # moon is observationally new by sunset. The 13.9° threshold matches
-        # observational reference data without producing false-early detections.
-        noon = _at_noon(date_cursor)
-        time_obs = Time(noon.strftime('%Y-%m-%d %H:%M:%S'))
-        moon_pos = get_body("moon", time_obs)
-        sun_pos = get_body("sun", time_obs)
-        angle = moon_pos.separation(sun_pos).degree
-        if angle <= 13.9:
-            # Walk backwards to find the FIRST day of this new moon
-            first_day = date_cursor
-            first_angle = angle
-            while first_day > start_date:
-                prev_day = first_day - dt.timedelta(days=1)
-                prev_noon = _at_noon(prev_day)
-                prev_t = Time(prev_noon.strftime('%Y-%m-%d %H:%M:%S'))
-                prev_moon = get_body("moon", prev_t)
-                prev_sun = get_body("sun", prev_t)
-                prev_angle = prev_moon.separation(prev_sun).degree
-                if prev_angle <= 13.9:
-                    first_day = prev_day
-                    first_angle = prev_angle
-                else:
-                    break
-
-            new_moon_count += 1
-            result[first_day] = first_angle
-            # Move forward by approximately one lunar cycle to find the next new moon
-            date_cursor = first_day + dt.timedelta(days=29)
-        else:
-            # Increment day by day to check the next date
-            date_cursor += dt.timedelta(days=1)
-    return result
+    The new moon day is the evening-to-evening day containing the conjunction,
+    dated by the evening it begins on.
+    """
+    margin = dt.timedelta(days=2)
+    conjunctions = find_conjunctions(start_date - margin, end_date + margin)
+    days = [dt.datetime.combine(d, dt.time()) for d in new_moon_days(conjunctions)]
+    days = [d for d in days if start_date <= d <= end_date]
+    if not days:
+        return {}
+    noon = Time([_at_noon(d) for d in days])
+    angles = get_body("moon", noon).separation(get_body("sun", noon)).degree
+    return dict(zip(days, angles))
 
 
 def enumerate_sabbaths(new_moons: List[dt.datetime]) -> List[dt.datetime]:
