@@ -6,7 +6,7 @@ These represent one interpretation of the Hebrew calendar based on observation.
 
 import pytest
 import datetime as dt
-from moon import enumerate_new_moons, FeastDays, get_vernal_equinox, get_lunar_year_starts, get_autumn_equinox
+from moon import enumerate_new_moons, find_conjunctions, FeastDays, get_vernal_equinox, get_lunar_year_starts, get_autumn_equinox
 
 
 # Reference New Moons from observational data (2022-2026)
@@ -61,6 +61,23 @@ REFERENCE_NEW_MOONS = [
     dt.date(2022, 8, 26),   # August 26, 2022; Friday eve
     dt.date(2022, 7, 28),   # July 28, 2022; Thursday eve
     dt.date(2022, 6, 28),   # June 28, 2022; Tuesday eve
+]
+
+# Published new moon instants (UTC) from the US Naval Observatory:
+# https://aa.usno.navy.mil/api/moon/phases/year?year=2026
+USNO_NEW_MOONS_2026 = [
+    dt.datetime(2026, 1, 18, 19, 52),
+    dt.datetime(2026, 2, 17, 12, 1),
+    dt.datetime(2026, 3, 19, 1, 23),
+    dt.datetime(2026, 4, 17, 11, 52),
+    dt.datetime(2026, 5, 16, 20, 1),
+    dt.datetime(2026, 6, 15, 2, 54),
+    dt.datetime(2026, 7, 14, 9, 43),
+    dt.datetime(2026, 8, 12, 17, 37),
+    dt.datetime(2026, 9, 11, 3, 27),
+    dt.datetime(2026, 10, 10, 15, 50),
+    dt.datetime(2026, 11, 9, 7, 2),
+    dt.datetime(2026, 12, 9, 0, 52),
 ]
 
 # Reference Feast Days by year
@@ -232,6 +249,28 @@ class TestNewMoons:
         assert dt.date(2025, 6, 24) in calc_dates
 
 
+class TestPublishedConjunctions:
+    """Cross-check computed conjunctions against published astronomical data."""
+
+    def test_conjunctions_match_usno(self):
+        """Computed conjunction times agree with USNO to within two minutes."""
+        calculated = find_conjunctions(dt.datetime(2026, 1, 1), dt.datetime(2027, 1, 1))
+        assert len(calculated) == len(USNO_NEW_MOONS_2026)
+        for calc, published in zip(calculated, USNO_NEW_MOONS_2026):
+            assert abs((calc - published).total_seconds()) < 120
+
+    def test_new_moon_october_2026(self, full_new_moons):
+        """October 9, 2026 new moon - conjunction October 10 15:50 UTC, before nightfall."""
+        calc_dates = [d.date() for d in full_new_moons.keys()]
+        assert dt.date(2026, 10, 9) in calc_dates
+        assert dt.date(2026, 10, 10) not in calc_dates
+
+    def test_all_reference_new_moons(self, full_new_moons):
+        """Every reference new moon is reproduced."""
+        calc_dates = {d.date() for d in full_new_moons.keys()}
+        assert [d for d in REFERENCE_NEW_MOONS if d not in calc_dates] == []
+
+
 class TestNewMoons2022_2023:
     """Tests for 2022-2023 new moons."""
 
@@ -290,9 +329,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 4, 19) in calc_dates
 
-    @pytest.mark.xfail(reason="Noon angle 14.19° exceeds 13.9° threshold - 1 day difference")
     def test_new_moon_may_2023(self, full_new_moons):
-        """May 18, 2023 new moon - noon angle too high for detection."""
+        """May 18, 2023 new moon - conjunction May 19 15:53 UTC, before nightfall."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 5, 18) in calc_dates
 
@@ -331,9 +369,8 @@ class TestNewMoons2022_2023:
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2023, 12, 12) in calc_dates
 
-    @pytest.mark.xfail(reason="Noon angle 14.33° exceeds 13.9° threshold - 1 day difference")
     def test_new_moon_january_2024(self, full_new_moons):
-        """January 10, 2024 new moon - noon angle too high for detection."""
+        """January 10, 2024 new moon."""
         calc_dates = [d.date() for d in full_new_moons.keys()]
         assert dt.date(2024, 1, 10) in calc_dates
 
